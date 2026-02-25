@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.env
+.env.local
+*.log
+.DS_Store
+# Ignore active DB, keep schema.sql
+db/pipeline.db
+db/pipeline.db-wal
+db/pipeline.db-shm
+dashboard/.next/
+dashboard/node_modules/

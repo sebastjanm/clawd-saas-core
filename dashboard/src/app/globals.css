@@ -1,0 +1,305 @@
+@import "tailwindcss";
+/* System fonts only — Apple HIG */
+
+:root {
+  --accent: #3b82f6;
+  --success: #10b981;
+  --error: #ef4444;
+  --warning: #f59e0b;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* Dark theme (default) — Apple HIG contrast-compliant */
+:root,
+html.dark {
+  --background: #0a0a0f;
+  --foreground: #e2e8f0;
+  --ink: #ffffff;
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-hover: rgba(255, 255, 255, 0.10);
+  --surface-alt: rgba(255, 255, 255, 0.04);
+  --surface-raised: rgba(255, 255, 255, 0.05);
+  --surface-strong: rgba(255, 255, 255, 0.14);
+  --border: rgba(255, 255, 255, 0.14);
+  --border-hover: rgba(255, 255, 255, 0.24);
+  --border-subtle: rgba(255, 255, 255, 0.10);
+  --muted: #9aa9be;
+  --nav-bg: rgba(8, 8, 13, 0.95);
+  --dialog-bg: #12121a;
+  --zebra: rgba(255, 255, 255, 0.02);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.08);
+  --scrollbar-hover: rgba(255, 255, 255, 0.16);
+  --divider-color: rgba(255, 255, 255, 0.08);
+  --divider-strong: rgba(255, 255, 255, 0.12);
+  --text-primary: rgba(255, 255, 255, 0.96);
+  --text-secondary: rgba(255, 255, 255, 0.82);
+  --text-tertiary: rgba(255, 255, 255, 0.68);
+  --text-quaternary: rgba(255, 255, 255, 0.58);
+  --text-faint: rgba(255, 255, 255, 0.46);
+}
+
+/* Light theme — Apple HIG contrast-compliant */
+html.light {
+  --background: #fafafa;
+  --foreground: #1a1a2e;
+  --ink: #0f172a;
+  --surface: rgba(0, 0, 0, 0.05);
+  --surface-hover: rgba(0, 0, 0, 0.08);
+  --surface-alt: rgba(0, 0, 0, 0.03);
+  --surface-raised: rgba(0, 0, 0, 0.05);
+  --surface-strong: rgba(0, 0, 0, 0.12);
+  --border: rgba(0, 0, 0, 0.14);
+  --border-hover: rgba(0, 0, 0, 0.22);
+  --border-subtle: rgba(0, 0, 0, 0.10);
+  --muted: #3f4b5d;
+  --nav-bg: rgba(255, 255, 255, 0.95);
+  --dialog-bg: #ffffff;
+  --zebra: rgba(0, 0, 0, 0.025);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.10);
+  --scrollbar-hover: rgba(0, 0, 0, 0.18);
+  --divider-color: rgba(0, 0, 0, 0.08);
+  --divider-strong: rgba(0, 0, 0, 0.12);
+  --text-primary: rgba(0, 0, 0, 0.94);
+  --text-secondary: rgba(0, 0, 0, 0.78);
+  --text-tertiary: rgba(0, 0, 0, 0.64);
+  --text-quaternary: rgba(0, 0, 0, 0.54);
+  --text-faint: rgba(0, 0, 0, 0.44);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-ink: var(--ink);
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Apple HIG-inspired type scale */
+  --hig-large-title: 1.75rem;    /* 28px */
+  --hig-title1: 1.375rem;        /* 22px */
+  --hig-title2: 1.25rem;         /* 20px */
+  --hig-headline: 1.0625rem;     /* 17px */
+  --hig-body: 0.9375rem;         /* 15px */
+  --hig-callout: 0.875rem;       /* 14px */
+  --hig-subhead: 0.8125rem;      /* 13px */
+  --hig-caption1: 0.75rem;       /* 12px */
+  --hig-caption2: 0.6875rem;     /* 11px */
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-size: var(--hig-body);
+  line-height: 1.47;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar — thin */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+/* Pulse animation for running status */
+@keyframes status-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.5;
+  }
+}
+.status-running {
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+/* Stagger fade-in */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Glow effect for dragged cards */
+.drag-glow {
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.25), 0 0 0 1px rgba(59, 130, 246, 0.4);
+}
+
+/* Monospace numbers */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* Glass card */
+.glass {
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.glass-hover:hover,
+.glass:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-hover);
+}
+
+/* Glass card - no hover variant */
+.glass-static {
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+/* Kanban scroll snap */
+.kanban-scroll {
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.kanban-scroll > * {
+  scroll-snap-align: start;
+}
+
+/* Subtle noise texture overlay */
+.noise::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  opacity: 0.018;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* Focus states for accessibility */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Section divider with label */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.section-divider::before,
+.section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--divider-color), transparent);
+}
+.section-divider::after {
+  background: linear-gradient(to left, var(--divider-color), transparent);
+}
+
+/* Zebra row striping */
+.zebra-row:nth-child(even) {
+  background: var(--zebra);
+}
+
+/* Cost color coding */
+.cost-low { color: var(--success); }
+.cost-med { color: var(--warning); }
+.cost-high { color: var(--error); }
+
+/* Active ripple for touch */
+@keyframes ripple {
+  to { transform: scale(2); opacity: 0; }
+}
+
+/* Dialog / Modal styling */
+dialog {
+  border: none;
+  border-radius: 12px;
+  background: var(--dialog-bg);
+  color: var(--foreground);
+}
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+}
+
+/* Pipeline: break out of max-width container */
+.pipeline-fullwidth {
+  width: calc(100vw - 4rem - 2rem); /* viewport minus sidebar minus padding */
+  max-width: none;
+}
+@media (max-width: 767px) {
+  .pipeline-fullwidth {
+    width: calc(100vw - 2rem);
+  }
+}
+
+/* Smooth page transitions */
+@keyframes page-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+main {
+  animation: page-in 0.3s ease-out;
+}
+
+/* Mobile: disable hover transforms */
+@media (hover: none) {
+  .glass:hover {
+    transform: none !important;
+    background: var(--surface);
+    border-color: var(--border);
+  }
+  .glass:active {
+    background: var(--surface-hover);
+    border-color: var(--border-hover);
+  }
+}
+
+/* Select dropdown styling */
+select {
+  background-color: var(--surface);
+  color: var(--foreground);
+}
+select option {
+  background-color: var(--dialog-bg);
+  color: var(--foreground);
+}
+
+/* iPhone readability pass (13 Pro and similar widths) */
+@media (max-width: 430px) {
+  :root {
+    --hig-body: 1rem;         /* 16px */
+    --hig-callout: 0.9375rem; /* 15px */
+    --hig-subhead: 0.875rem;  /* 14px */
+    --hig-caption1: 0.8125rem;/* 13px */
+    --hig-caption2: 0.75rem;  /* 12px */
+  }
+
+  body {
+    line-height: 1.52;
+    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
+}

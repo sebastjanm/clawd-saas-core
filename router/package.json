@@ -1,0 +1,10 @@
+{
+  "name": "pipeline-router",
+  "version": "1.0.0",
+  "description": "Event-driven pipeline webhook router for OpenClaw content pipeline",
+  "type": "module",
+  "main": "router.js",
+  "dependencies": {
+    "better-sqlite3": "^11.0.0"
+  }
+}

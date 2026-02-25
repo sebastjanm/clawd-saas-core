@@ -1,0 +1,24 @@
+-- Agent runs table already exists in production DB
+-- This migration is a no-op reference for documentation
+
+-- CREATE TABLE IF NOT EXISTS agent_runs (
+--   id INTEGER PRIMARY KEY AUTOINCREMENT,
+--   agent_name TEXT NOT NULL,
+--   agent_type TEXT NOT NULL CHECK(agent_type IN ('pipeline','freelancer','system')),
+--   job_id TEXT,
+--   session_key TEXT,
+--   status TEXT NOT NULL CHECK(status IN ('running','ok','error','timeout','killed')),
+--   task_summary TEXT,
+--   article_id INTEGER REFERENCES articles(id),
+--   project TEXT,
+--   started_at TEXT NOT NULL DEFAULT (datetime('now')),
+--   finished_at TEXT,
+--   duration_ms INTEGER,
+--   tokens_in INTEGER,
+--   tokens_out INTEGER,
+--   error TEXT,
+--   created_at TEXT NOT NULL DEFAULT (datetime('now'))
+-- );
+-- CREATE INDEX idx_agent_runs_agent ON agent_runs(agent_name, started_at DESC);
+-- CREATE INDEX idx_agent_runs_status ON agent_runs(status);
+-- CREATE INDEX idx_agent_runs_article ON agent_runs(article_id);

@@ -1,0 +1,29 @@
+-- Baseline: articles and pipeline_log tables already exist in production DB
+-- This migration is a no-op reference for documentation
+
+-- CREATE TABLE IF NOT EXISTS articles (
+--   id INTEGER PRIMARY KEY AUTOINCREMENT,
+--   project TEXT NOT NULL,
+--   title TEXT NOT NULL,
+--   slug TEXT,
+--   primary_keyword TEXT,
+--   search_intent TEXT CHECK(search_intent IN ('informational','commercial','comparison','transactional')),
+--   outline TEXT,
+--   draft_md TEXT,
+--   final_md TEXT,
+--   feedback TEXT,
+--   status TEXT NOT NULL DEFAULT 'backlog',
+--   claimed_by TEXT,
+--   claimed_at TEXT,
+--   published_url TEXT,
+--   published_at TEXT,
+--   promoted_at TEXT,
+--   created_at TEXT DEFAULT (datetime('now')),
+--   updated_at TEXT DEFAULT (datetime('now')),
+--   strategy TEXT,
+--   notes TEXT,
+--   scheduled_date TEXT,
+--   day_number INTEGER,
+--   cover_image TEXT,
+--   UNIQUE(project, slug)
+-- );
