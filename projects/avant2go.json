@@ -1,0 +1,18 @@
+{
+  "project_id": "avant2go",
+  "client_name": "Avant2Go",
+  "language": "sl",
+  "writing": {
+    "tone": "professional",
+    "word_count": "800-1200",
+    "target_audience": "General",
+    "forbidden": [],
+    "guidelines": "Standard quality guidelines."
+  },
+  "social": {
+    "platforms": []
+  },
+  "publishing_paused": false,
+  "publishing_paused_by": "dashboard",
+  "publishing_paused_at": "2026-02-25T20:09:52.471Z"
+}

@@ -12,5 +12,11 @@
   "branding": {
     "logo_text": "EasyAI Start",
     "theme": "light"
-  }
+  },
+  "generating_paused": true,
+  "generating_paused_by": "dashboard",
+  "generating_paused_at": "2026-02-25T20:10:00.891Z",
+  "publishing_paused": true,
+  "publishing_paused_by": "dashboard",
+  "publishing_paused_at": "2026-02-25T20:10:01.847Z"
 }

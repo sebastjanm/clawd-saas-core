@@ -3,6 +3,7 @@
 import { useState, useTransition, useEffect, useCallback, useRef } from 'react';
 import { type ProjectSettings, updateProjectSettings } from '../../actions/settings';
 import { type ProjectPauseState, toggleProjectPause } from '../../actions/pause';
+import { deleteProject } from '../../actions/deleteProject';
 import { NewProjectModal } from './NewProjectModal';
 
 function Toggle({
@@ -107,10 +108,10 @@ function ProjectCard({
 }) {
   const [s, setS] = useState(initial);
   const [isPending, startTransition] = useTransition();
+  const [isDeleting, setIsDeleting] = useState(false);
   const [lastSaved, setLastSaved] = useState<number | null>(null);
 
   // Sync with initial props if they change (e.g. after revalidation)
-  // We use a ref to track the previous initial settings to avoid loops/stale reverts
   const prevInitialRef = useRef(JSON.stringify(initial));
   useEffect(() => {
     const currentJson = JSON.stringify(initial);
@@ -128,6 +129,20 @@ function ProjectCard({
       if (result.ok) {
         setLastSaved(Date.now());
       }
+    });
+  };
+
+  const handleDelete = () => {
+    if (!confirm(`⚠️ DANGER: Delete "${s.project}"?\n\nThis will remove all data for this project.\nThis cannot be undone.`)) return;
+    setIsDeleting(true);
+    startTransition(async () => {
+       const res = await deleteProject(s.project);
+       if (res.ok) {
+         window.location.reload();
+       } else {
+         alert('Failed: ' + res.error);
+         setIsDeleting(false);
+       }
     });
   };
 
@@ -272,6 +287,17 @@ function ProjectCard({
                  : "Standard mode active: Using daily limit."}
              </p>
            </div>
+        </div>
+
+        <div className="flex justify-end pt-2 border-t border-[var(--border)]/30">
+          <button 
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="text-[10px] text-[var(--error)]/60 hover:text-[var(--error)] hover:bg-[var(--error)]/10 px-2 py-1 rounded transition-colors disabled:opacity-30 flex items-center gap-1"
+            title="Delete this project permanently"
+          >
+            {isDeleting ? 'Deleting...' : '🗑️ Delete Project'}
+          </button>
         </div>
       </div>
     </div>

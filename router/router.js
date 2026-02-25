@@ -1360,6 +1360,36 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Delete Project (SaaS Teardown)
+  if (req.method === 'DELETE' && req.url.startsWith('/pipeline/projects/')) {
+    const projectId = req.url.split('/').pop();
+    if (!projectId || projectId.includes('..')) { // basic safety
+       res.writeHead(400, { 'Content-Type': 'application/json' }); 
+       res.end(JSON.stringify({ error: 'Invalid ID' })); 
+       return;
+    }
+    
+    try {
+      // 1. Delete Config
+      const configPath = join(PROJECTS_DIR, `${projectId}.json`);
+      if (existsSync(configPath)) unlinkSync(configPath);
+      
+      // 2. Delete DB Record
+      const wdb = getWriteDb();
+      wdb.prepare('DELETE FROM project_settings WHERE project = ?').run(projectId);
+      
+      // 3. Restart Router
+      setTimeout(() => process.exit(0), 500);
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok', msg: 'Project deleted' }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   // Health
   if (req.method === 'GET' && req.url === '/pipeline/health') {
     try {
