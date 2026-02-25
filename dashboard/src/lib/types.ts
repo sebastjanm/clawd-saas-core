@@ -45,10 +45,7 @@ export const COLUMN_LABELS: Record<ArticleStatus, string> = {
 };
 
 export const PROJECT_COLORS: Record<string, string> = {
-  nakupsrebra: '#C0C0C0',
-  'baseman-blog': '#3b8bbc',
-  'avant2go-subscribe': '#22c55e',
-  'lightingdesign-studio': '#c9a227', // Muted gold
+  'easyai-start': '#0066FF', // Brand Blue
 };
 
 export const AGENT_META: Record<string, { emoji: string; role: string; desc: string; type: 'pipeline' | 'freelancer' | 'system'; group?: string }> = {
