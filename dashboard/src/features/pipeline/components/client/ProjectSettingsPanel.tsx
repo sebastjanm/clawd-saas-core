@@ -3,6 +3,7 @@
 import { useState, useTransition, useEffect, useCallback, useRef } from 'react';
 import { type ProjectSettings, updateProjectSettings } from '../../actions/settings';
 import { type ProjectPauseState, toggleProjectPause } from '../../actions/pause';
+import { NewProjectModal } from './NewProjectModal';
 
 function Toggle({
   label,
@@ -279,6 +280,7 @@ function ProjectCard({
 
 export function ProjectSettingsPanel({ settings }: { settings: ProjectSettings[] }) {
   const [pauseStates, setPauseStates] = useState<Record<string, ProjectPauseState>>({});
+  const [showNew, setShowNew] = useState(false);
   const [, startTransition] = useTransition();
 
   const fetchPauseStates = useCallback(async () => {
@@ -319,24 +321,35 @@ export function ProjectSettingsPanel({ settings }: { settings: ProjectSettings[]
     });
   };
 
-  if (!settings?.length) {
-    return (
-      <div className="p-8 text-center border border-[var(--border)] rounded-xl border-dashed">
-        <p className="text-sm text-[var(--text-secondary)]">No project settings found.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-      {settings.map((s) => (
-        <ProjectCard
-          key={s.project}
-          settings={s}
-          pauseState={pauseStates[s.project]}
-          onPauseToggle={handlePauseToggle}
-        />
-      ))}
+    <div className="space-y-6">
+      <div className="flex justify-end">
+        <button 
+          onClick={() => setShowNew(true)}
+          className="rounded-lg bg-[var(--surface)] border border-[var(--border)] px-4 py-2 text-xs font-medium hover:bg-[var(--surface-hover)] transition-colors flex items-center gap-2"
+        >
+          <span>✨</span> New Project
+        </button>
+      </div>
+
+      {!settings?.length ? (
+        <div className="p-8 text-center border border-[var(--border)] rounded-xl border-dashed">
+          <p className="text-sm text-[var(--text-secondary)]">No project settings found.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {settings.map((s) => (
+            <ProjectCard
+              key={s.project}
+              settings={s}
+              pauseState={pauseStates[s.project]}
+              onPauseToggle={handlePauseToggle}
+            />
+          ))}
+        </div>
+      )}
+
+      {showNew && <NewProjectModal onClose={() => setShowNew(false)} />}
     </div>
   );
 }

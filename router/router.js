@@ -1322,6 +1322,44 @@ async function pollForStuckArticles() {
 // ─── HTTP Server ──────────────────────────────────────────────────────────────
 
 const server = http.createServer(async (req, res) => {
+  // Create New Project (SaaS Onboarding)
+  if (req.method === 'POST' && req.url === '/pipeline/projects') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const config = JSON.parse(body);
+        if (!config.project_id || !config.client_name) {
+          throw new Error('Missing project_id or client_name');
+        }
+
+        // 1. Write Config File
+        if (!existsSync(PROJECTS_DIR)) mkdirSync(PROJECTS_DIR, { recursive: true });
+        const configPath = join(PROJECTS_DIR, `${config.project_id}.json`);
+        writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+        // 2. Insert into DB
+        const wdb = getWriteDb();
+        try {
+          wdb.prepare(`
+            INSERT INTO project_settings (project, daily_limit, vacation_mode, auto_approve, paused, updated_at)
+            VALUES (?, 2, 0, 0, 0, datetime('now'))
+          `).run(config.project_id);
+        } catch (e) { /* ignore if exists */ }
+
+        // 3. Restart Router to pick up new config file (Simple Reload)
+        setTimeout(() => process.exit(0), 500);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ok', msg: 'Project created. Router restarting...' }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'error', error: err.message }));
+      }
+    });
+    return;
+  }
+
   // Health
   if (req.method === 'GET' && req.url === '/pipeline/health') {
     try {
