@@ -16,10 +16,7 @@ const TOKEN = typeof window !== 'undefined' ? 'tovarna_dashboard_2026' : '';
 
 const PROJECTS = [
   { id: '', label: 'All projects' },
-  { id: 'nakupsrebra', label: 'NakupSrebra' },
-  { id: 'baseman-blog', label: 'Baseman Blog' },
-  { id: 'avant2go-subscribe', label: 'Avant2Subscribe' },
-  { id: 'lightingdesign-studio', label: 'Lighting Design' },
+  { id: 'easyai-start', label: 'EasyAI Start' },
 ];
 
 async function fetchLibrary(project?: string): Promise<Article[]> {

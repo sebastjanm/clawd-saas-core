@@ -42,7 +42,7 @@ process.on('unhandledRejection', (reason) => {
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const PORT = parseInt(process.env.PIPELINE_ROUTER_PORT || '3401', 10);
+const PORT = parseInt(process.env.PIPELINE_ROUTER_PORT || '4001', 10);
 const DB_PATH = process.env.PIPELINE_DB || '/home/clawdbot/clawd/content-pipeline/pipeline.db';
 const HOOKS_URL = process.env.HOOKS_URL || 'http://127.0.0.1:18789/hooks/agent';
 const HOOKS_TOKEN = process.env.HOOKS_TOKEN || 'f03286cbf278e084e597e42eb18346f1c14aa02f2e4aa2dc58809a58809a9edc';

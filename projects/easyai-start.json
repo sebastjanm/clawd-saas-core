@@ -1,0 +1,16 @@
+{
+  "client_name": "EasyAI Start",
+  "project_id": "easyai-start",
+  "api_keys": {
+    "openai": "process.env.OPENAI_API_KEY",
+    "anthropic": "process.env.ANTHROPIC_API_KEY"
+  },
+  "content_guidelines": {
+    "tone": "professional, innovative",
+    "language": "en"
+  },
+  "branding": {
+    "logo_text": "EasyAI Start",
+    "theme": "light"
+  }
+}

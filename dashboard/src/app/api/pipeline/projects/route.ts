@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server';
 
-const ROUTER_URL = 'http://127.0.0.1:3401';
+const ROUTER_URL = process.env.PIPELINE_ROUTER_URL || 'http://127.0.0.1:4001';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  console.log('📢 API CALL: /api/pipeline/projects');
+  console.log('📢 ROUTER URL:', ROUTER_URL);
+  
   try {
     const res = await fetch(`${ROUTER_URL}/pipeline/health`, {
       signal: AbortSignal.timeout(5000),
+      cache: 'no-store', // Force no cache
     });
     if (!res.ok) return NextResponse.json({ error: 'Router unavailable' }, { status: 502 });
     const health = await res.json();

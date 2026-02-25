@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 
 type ActionResult = { ok: boolean; error?: string; articleId?: number };
 
-const ROUTER_URL = 'http://127.0.0.1:3401';
+const ROUTER_URL = process.env.PIPELINE_ROUTER_URL || 'http://127.0.0.1:4001';
 
 function revalidateAll() {
   revalidatePath('/pipeline');

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
-const ROUTER_URL = 'http://127.0.0.1:3401';
+const ROUTER_URL = process.env.PIPELINE_ROUTER_URL || 'http://127.0.0.1:4001';
 
 type PauseResult = { ok: boolean; error?: string };
 

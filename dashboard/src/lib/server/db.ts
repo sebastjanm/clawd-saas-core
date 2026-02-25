@@ -15,6 +15,7 @@ export function getDb(): Database.Database {
     _db.pragma('journal_mode = WAL');
     _db.pragma('busy_timeout = 5000');
     _db.pragma('foreign_keys = ON');
+    console.log('📢 DASHBOARD DB PATH:', DB_PATH); // DEBUG LOG
     logger.info({ path: DB_PATH }, 'Database connected');
   }
   return _db;
