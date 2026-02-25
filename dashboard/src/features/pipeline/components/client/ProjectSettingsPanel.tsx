@@ -131,15 +131,11 @@ function ProjectCard({
   };
 
   const projectColors: Record<string, string> = {
-    nakupsrebra: '#C0C0C0', // Silver
-    'baseman-blog': '#000000', // Black
-    'avant2go-subscribe': '#00AEEF', // Blue
+    'easyai-start': '#0066FF',
   };
 
   const projectLabels: Record<string, string> = {
-    nakupsrebra: 'Nakup Srebra',
-    'baseman-blog': 'Baseman Blog',
-    'avant2go-subscribe': 'Avant2Go',
+    'easyai-start': 'EasyAI Start',
   };
 
   const isGeneratingPaused = !!pauseState?.generating;

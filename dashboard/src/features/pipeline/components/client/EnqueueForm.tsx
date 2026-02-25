@@ -4,9 +4,7 @@ import { useState, useTransition } from 'react';
 import { enqueueArticle } from '../../actions/controls';
 
 const PROJECTS = [
-  { id: 'nakupsrebra', label: 'NakupSrebra' },
-  { id: 'baseman-blog', label: 'Baseman Blog' },
-  { id: 'avant2go-subscribe', label: 'Avant2Subscribe' },
+  { id: 'easyai-start', label: 'EasyAI Start' },
 ];
 
 const PRIORITIES = [

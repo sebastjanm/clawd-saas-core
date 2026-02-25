@@ -5,9 +5,7 @@ import { toggleProjectPause, type ProjectPauseState } from '../../actions/pause'
 import { PROJECT_COLORS } from '@/lib/types';
 
 const PROJECTS = [
-  { id: 'nakupsrebra', label: 'NakupSrebra' },
-  { id: 'baseman-blog', label: 'Baseman Blog' },
-  { id: 'avant2go-subscribe', label: 'Avant2Subscribe' },
+  { id: 'easyai-start', label: 'EasyAI Start' },
 ];
 
 function timeAgo(iso: string | null): string {
