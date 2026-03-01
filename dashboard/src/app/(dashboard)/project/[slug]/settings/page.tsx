@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { ProjectSettingsPanel } from '@/features/pipeline/components/client/ProjectSettingsPanel';
 import { getProjectSettings, type ProjectSettings } from '@/features/pipeline/actions/settings';
 

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { getDb } from '@/lib/server/db';
 import { AGENT_META } from '@/lib/types';
 import { AgentMiniGrid } from '@/features/agents/components/client/AgentMiniGrid';

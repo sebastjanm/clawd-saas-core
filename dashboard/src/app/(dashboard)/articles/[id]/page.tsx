@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { notFound } from 'next/navigation';
 import { getDb } from '@/lib/server/db';
 import { ArticlePreview } from '@/features/pipeline/components/server/ArticlePreview';

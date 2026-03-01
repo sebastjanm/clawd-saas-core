@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { notFound } from 'next/navigation';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
