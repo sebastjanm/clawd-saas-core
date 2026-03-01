@@ -19,7 +19,7 @@
 
 import http from 'node:http';
 import Database from 'better-sqlite3';
-import { readFileSync, appendFileSync, mkdirSync, existsSync, writeFileSync, readdirSync } from 'node:fs';
+import { readFileSync, appendFileSync, mkdirSync, existsSync, writeFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -221,9 +221,16 @@ function loadProjects() {
     ];
   }
 }
-const PROJECTS = loadProjects();
+
+let PROJECTS = loadProjects();
 // Keep backward compat: places that use PROJECTS as string[] get slugs
-const PROJECT_SLUGS = PROJECTS.map(p => typeof p === 'string' ? p : p.slug);
+let PROJECT_SLUGS = PROJECTS.map(p => typeof p === 'string' ? p : p.slug);
+
+function refreshProjectsState() {
+  PROJECTS = loadProjects();
+  PROJECT_SLUGS = PROJECTS.map(p => typeof p === 'string' ? p : p.slug);
+  log('INFO', `♻️ State Refreshed. Active projects: ${PROJECT_SLUGS.length}`);
+}
 
 const OTI_JOBS = {
   'cf5262ea-bee8-498d-b615-c44d65488b3f': 'nakupsrebra',
@@ -311,7 +318,7 @@ function findArticles(status, project, agent) {
   }
   return getDb().prepare(
     `SELECT id, title, priority FROM articles WHERE status = ? AND project = ?
-     ORDER BY CASE priority WHEN 'now' THEN 0 WHEN 'high' THEN 1 ELSE 2 END, updated_at ASC LIMIT 5`
+     ORDER BY CASE priority WHEN 'now' THEN 0 WHEN 'high' THEN 1 ELSE 2 END, updated_at ASC LIMIT 3`
   ).all(status, project);
 }
 
@@ -1088,6 +1095,24 @@ async function pollForStuckArticles() {
   } catch (err) {
     log('ERROR', `Done-for-today fallback: ${err.message}`);
   }
+  // 0.9. Silent pause mode — if ALL projects are paused, skip article polling
+  // Still runs completions/resets above, but does not scan for new work
+  try {
+    const allPaused = PROJECT_SLUGS.every(p => {
+      const s = getDb().prepare('SELECT paused FROM project_settings WHERE project = ?').get(p);
+      return s?.paused;
+    });
+    if (allPaused) {
+      if (!pollForStuckArticles._lastSilentLog || Date.now() - pollForStuckArticles._lastSilentLog > 30 * 60 * 1000) {
+        log('INFO', '😴 All projects paused — silent mode (skipping article scan)');
+        pollForStuckArticles._lastSilentLog = Date.now();
+      }
+      return;
+    }
+  } catch (err) {
+    log('ERROR', `Silent pause check: ${err.message}`);
+  }
+
   // 1. Priority "now" articles — bypass cooldowns, trigger immediately
   const statusToAgent = {
     'todo': 'pino',
@@ -1199,7 +1224,7 @@ async function pollForStuckArticles() {
         const failedArticles = getDb().prepare(
           `SELECT a.id FROM articles a WHERE a.status = ? AND a.project = ?
            AND (SELECT COUNT(*) FROM article_events ae
-                WHERE ae.article_id = a.id AND ae.event_type IN ('agent_failed','timeout')
+                WHERE ae.article_id = a.id AND ae.event_type = 'agent_failed'
                 AND ae.created_at > datetime('now', '-24 hours')
                 AND ae.created_at > COALESCE(
                   (SELECT MAX(ae2.created_at) FROM article_events ae2 WHERE ae2.article_id = a.id AND ae2.event_type IN ('agent_completed','status_change','enqueued')),
@@ -1347,11 +1372,11 @@ const server = http.createServer(async (req, res) => {
           `).run(config.project_id);
         } catch (e) { /* ignore if exists */ }
 
-        // 3. Restart Router to pick up new config file (Simple Reload)
-        setTimeout(() => process.exit(0), 500);
+        // 3. Hot Reload (No restart needed)
+        refreshProjectsState();
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'ok', msg: 'Project created. Router restarting...' }));
+        res.end(JSON.stringify({ status: 'ok', msg: 'Project created' }));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'error', error: err.message }));
@@ -1378,8 +1403,8 @@ const server = http.createServer(async (req, res) => {
       const wdb = getWriteDb();
       wdb.prepare('DELETE FROM project_settings WHERE project = ?').run(projectId);
       
-      // 3. Restart Router
-      setTimeout(() => process.exit(0), 500);
+      // 3. Hot Reload
+      refreshProjectsState();
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ status: 'ok', msg: 'Project deleted' }));
@@ -1823,6 +1848,28 @@ try { ensureSchema(); } catch (err) {
 
 // Restore state from previous run
 loadState();
+
+// Sync projects from JSON to DB
+function syncProjectsToDb() {
+  try {
+    const projects = loadProjects();
+    const wdb = getWriteDb();
+    const existing = wdb.prepare("SELECT project FROM project_settings").all().map(r => r.project);
+    for (const p of projects) {
+      if (!existing.includes(p.slug)) {
+        log('INFO', `Sync: Adding missing project '${p.slug}' to DB`);
+        wdb.prepare(`
+          INSERT INTO project_settings (project, daily_limit, vacation_mode, auto_approve, paused, updated_at)
+          VALUES (?, 2, 0, 0, 0, datetime('now'))
+        `).run(p.slug);
+      }
+    }
+    log('INFO', `Synced ${projects.length} projects to DB`);
+  } catch (err) {
+    log('ERROR', `Sync failed: ${err.message}`);
+  }
+}
+syncProjectsToDb();
 
 // Poll every 2 minutes — primary chain mechanism since /hooks/agent completions
 // go to the main session, not back to the router. Lightweight (few SQLite reads).

@@ -12,7 +12,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    // requireAuth(request);
+    requireAuth(request);
     const { id } = await params;
     const body = (await request.json()) as { status?: string; content?: string };
 

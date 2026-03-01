@@ -1,0 +1,22 @@
+{
+  "project_id": "rent-a-car",
+  "client_name": "Rent-a-car",
+  "client": {
+    "company_name": "Rent-a-car",
+    "contact": {
+      "email": "sebastjan@lecturehub.com"
+    },
+    "plan": "standard"
+  },
+  "language": "sl",
+  "writing": {
+    "tone": "expert",
+    "target_audience": "tourists",
+    "mission": "Establish Rent-a-car as a leader.",
+    "word_count": "800-1200",
+    "guidelines": "Standard quality guidelines."
+  },
+  "social": {
+    "platforms": []
+  }
+}

@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 // Batch approve/reject all posts for an article
 export async function POST(request: Request) {
   try {
-    // requireAuth(request);
+    requireAuth(request);
     const body = (await request.json()) as {
       article_id: number;
       action: 'approve' | 'reject';

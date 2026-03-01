@@ -8,6 +8,7 @@ import {
   type SocialGroup,
   type SocialPost,
 } from '../../hooks/useSocial';
+import { useProjects } from '@/shared/hooks/useProjects';
 import { Spinner } from '@/shared/components/client/Spinner';
 import { PROJECT_COLORS } from '@/lib/types';
 
@@ -29,11 +30,6 @@ const STATUS_TABS = [
   { value: 'approved', label: 'Approved' },
   { value: 'posted', label: 'Posted' },
   { value: 'rejected', label: 'Rejected' },
-];
-
-const PROJECTS = [
-  { id: '', label: 'All projects' },
-  { id: 'easyai-start', label: 'EasyAI Start' },
 ];
 
 function StatusBadge({ status }: { status: string }) {
@@ -221,6 +217,7 @@ export function SocialDashboard() {
   const [statusFilter, setStatusFilter] = useState('');
   const [projectFilter, setProjectFilter] = useState('');
   const [busy, setBusy] = useState(false);
+  const { projects } = useProjects();
 
   const { data, loading, error, refetch } = useSocial(
     statusFilter || undefined,
@@ -305,7 +302,7 @@ export function SocialDashboard() {
           onChange={(e) => setProjectFilter(e.target.value)}
           className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)] outline-none"
         >
-          {PROJECTS.map((p) => (
+          {projects.map((p) => (
             <option key={p.id} value={p.id}>
               {p.label}
             </option>

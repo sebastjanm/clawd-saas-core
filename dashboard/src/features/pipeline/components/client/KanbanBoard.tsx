@@ -13,18 +13,15 @@ import {
 import { useState } from 'react';
 import { KanbanColumn } from './KanbanColumn';
 import { usePipeline } from '../../hooks/usePipeline';
+import { useProjects } from '@/shared/hooks/useProjects';
 import { updateArticleStatus } from '../../actions';
 import { Spinner } from '@/shared/components/client/Spinner';
 import { PROJECT_COLORS } from '@/lib/types';
 import type { Article, ArticleStatus } from '@/lib/types';
 
-const PROJECTS = [
-  { id: '', label: 'All projects' },
-  { id: 'easyai-start', label: 'EasyAI Start' },
-];
-
 export function KanbanBoard() {
   const [selectedProject, setSelectedProject] = useState<string>('');
+  const { projects } = useProjects();
   const { data: columns, loading, error, refetch } = usePipeline(selectedProject || undefined);
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
 
@@ -133,10 +130,11 @@ function ProjectFilter({
   selected: string;
   onChange: (project: string) => void;
 }) {
+  const { projects } = useProjects();
   return (
     <div className="glass-static rounded-xl p-3 flex flex-wrap gap-3 items-center animate-fade-up">
       <span className="text-xs text-[var(--text-quaternary)]">Filter:</span>
-      {PROJECTS.map((p) => (
+      {projects.map((p) => (
         <button
           key={p.id}
           onClick={() => onChange(p.id)}

@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    // requireAuth(request);
+    requireAuth(request);
     const db = getDb();
 
     // Pipeline status

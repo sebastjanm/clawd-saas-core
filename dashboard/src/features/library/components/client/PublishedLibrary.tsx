@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { usePolling } from '@/shared/hooks/usePolling';
+import { useProjects } from '@/shared/hooks/useProjects';
 import { apiPath } from '@/shared/lib/apiPath';
 import { Spinner } from '@/shared/components/client/Spinner';
 import { PROJECT_COLORS } from '@/lib/types';
@@ -13,11 +14,6 @@ interface LibraryResponse {
 }
 
 const TOKEN = typeof window !== 'undefined' ? 'tovarna_dashboard_2026' : '';
-
-const PROJECTS = [
-  { id: '', label: 'All projects' },
-  { id: 'easyai-start', label: 'EasyAI Start' },
-];
 
 async function fetchLibrary(project?: string): Promise<Article[]> {
   const url = project
@@ -33,6 +29,7 @@ async function fetchLibrary(project?: string): Promise<Article[]> {
 
 export function PublishedLibrary() {
   const [selectedProject, setSelectedProject] = useState<string>('');
+  const { projects } = useProjects();
   
   const { data: articles, loading, error } = usePolling(
     () => fetchLibrary(selectedProject || undefined),
@@ -54,7 +51,7 @@ export function PublishedLibrary() {
   return (
     <div className="space-y-6">
       <div className="flex gap-3 overflow-x-auto pb-2">
-        {PROJECTS.map((p) => (
+        {projects.map((p) => (
           <button
             key={p.id}
             onClick={() => setSelectedProject(p.id)}

@@ -28,6 +28,7 @@ export function NewProjectModal({ onClose }: { onClose: () => void }) {
     startTransition(async () => {
       const config = {
         project_id: id,
+        client_name: name,
         client: {
           company_name: name,
           contact: { email },

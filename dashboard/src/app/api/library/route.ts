@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    // requireAuth(request);
+    requireAuth(request);
     const { searchParams } = new URL(request.url);
     const project = searchParams.get('project');
     const limit = parseInt(searchParams.get('limit') || '50');
