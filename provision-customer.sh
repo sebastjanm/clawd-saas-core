@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================================
-# 🏭 Clawd SaaS — Customer Provisioning Script
+# 🏭 EasyAI Start — Customer Provisioning Script
 # ============================================================================
 # Usage: ./provision-customer.sh <slug> <company> <language> [domain]
 # ============================================================================
@@ -82,7 +82,7 @@ fi
 echo "📦 7/9: Configuration..."
 
 cat > .env << ENVEOF
-# Clawd SaaS — $COMPANY
+# EasyAI Start — $COMPANY
 # Generated: $(date -u +"%Y-%m-%d %H:%M UTC")
 DASHBOARD_TOKEN=$DASHBOARD_TOKEN
 PIPELINE_DB=$INSTALL_DIR/db/pipeline.db

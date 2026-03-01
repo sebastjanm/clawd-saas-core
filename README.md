@@ -1,4 +1,4 @@
-# 🏭 Clawd SaaS Core
+# 🚀 EasyAI Start
 
 The engine behind **EasyAI Start** and other AI Content Factories.
 Designed for multi-tenant SaaS deployment.

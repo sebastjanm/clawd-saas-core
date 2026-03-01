@@ -43,7 +43,7 @@ export default function LoginPage() {
         <div className="text-center">
           <span className="text-4xl">🚀</span>
           <h1 className="mt-4 text-2xl font-bold text-[var(--text-primary)]">
-            Content Factory
+            EasyAI Start
           </h1>
           <p className="mt-2 text-sm text-[var(--text-tertiary)]">
             Enter your access token to continue

@@ -147,11 +147,11 @@ function ProjectCard({
   };
 
   const projectColors: Record<string, string> = {
-    'easyai-start': '#0066FF',
+    // Colors auto-assigned per project
   };
 
   const projectLabels: Record<string, string> = {
-    'easyai-start': 'EasyAI Start',
+    // Labels default to project slug
   };
 
   const isGeneratingPaused = !!pauseState?.generating;

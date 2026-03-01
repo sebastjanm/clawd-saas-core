@@ -3,7 +3,7 @@ import { ThemeProvider } from '@/shared/components/client/ThemeProvider';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'EasyAI Start',
+  title: 'EasyAI Start — AI Content Factory',
   description: 'AI Content Production SaaS',
 };
 

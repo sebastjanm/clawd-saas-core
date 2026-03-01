@@ -1,12 +1,11 @@
 'use client';
 
+import { useProjects } from '@/shared/hooks/useProjects';
 import { useState, useTransition, useEffect, useCallback } from 'react';
 import { toggleProjectPause, type ProjectPauseState } from '../../actions/pause';
 import { PROJECT_COLORS } from '@/lib/types';
 
-const PROJECTS = [
-  { id: 'easyai-start', label: 'EasyAI Start' },
-];
+
 
 function timeAgo(iso: string | null): string {
   if (!iso) return '';
@@ -20,6 +19,7 @@ function timeAgo(iso: string | null): string {
 }
 
 export function ProjectControls() {
+  const { projects: PROJECTS } = useProjects();
   const [states, setStates] = useState<Record<string, ProjectPauseState>>({});
   const [expanded, setExpanded] = useState(false);
   const [pending, startTransition] = useTransition();

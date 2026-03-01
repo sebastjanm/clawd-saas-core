@@ -1,11 +1,10 @@
 'use client';
 
+import { useProjects } from '@/shared/hooks/useProjects';
 import { useState, useTransition } from 'react';
 import { enqueueArticle } from '../../actions/controls';
 
-const PROJECTS = [
-  { id: 'easyai-start', label: 'EasyAI Start' },
-];
+
 
 const PRIORITIES = [
   { id: 'normal' as const, label: 'Normal', icon: '' },
@@ -14,6 +13,7 @@ const PRIORITIES = [
 ];
 
 export function EnqueueForm() {
+  const { projects: PROJECTS } = useProjects();
   const [open, setOpen] = useState(false);
   const [project, setProject] = useState(PROJECTS[0].id);
   const [title, setTitle] = useState('');
