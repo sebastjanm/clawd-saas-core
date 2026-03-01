@@ -36,10 +36,22 @@ PROBLEMS=()
 while IFS='|' read -r slug host port; do
   [[ -z "$slug" || "$slug" == \#* ]] && continue
   TOTAL=$((TOTAL + 1))
+  # Try router health endpoint first, then dashboard login as fallback
   url="http://${host}:${port}/pipeline/health"
   response=$(curl -s --connect-timeout "$TIMEOUT" --max-time "$TIMEOUT" "$url" 2>/dev/null || echo "UNREACHABLE")
 
   if echo "$response" | grep -q '"status":"ok"'; then
+    found_health=true
+  elif [[ "$response" == "UNREACHABLE" ]]; then
+    # Fallback: check if dashboard responds
+    fallback=$(curl -s --connect-timeout "$TIMEOUT" --max-time "$TIMEOUT" -o /dev/null -w "%{http_code}" "http://${host}:${port}/login" 2>/dev/null || echo "000")
+    if [[ "$fallback" == "200" || "$fallback" == "307" ]]; then
+      found_health=true
+      response='{"status":"ok","uptime":0}'
+    fi
+  fi
+
+  if [[ "${found_health:-}" == "true" ]]; then
     HEALTHY=$((HEALTHY + 1))
     uptime=$(echo "$response" | python3 -c "import sys,json; print(f'{json.load(sys.stdin)[\"uptime\"]/3600:.1f}h')" 2>/dev/null || echo "?")
     $QUIET || echo "✅ $slug ($host:$port) — up ${uptime}"
