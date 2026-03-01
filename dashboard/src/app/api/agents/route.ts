@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    requireAuth(request);
+    await requireAuth(request);
     const db = getDb();
     // In SaaS mode, we don't expose system cron jobs
     // const cronJobs = await getCronJobs();

@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
-    requireAuth(request);
+    await requireAuth(request);
     const body: unknown = await request.json();
     const parsed = TriggerSchema.safeParse(body);
     if (!parsed.success) {

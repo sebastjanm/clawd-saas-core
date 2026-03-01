@@ -84,7 +84,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    requireAuth(request);
+    await requireAuth(request);
     const { id } = await params;
     const body = (await request.json()) as { action: 'approve' | 'reject' };
 

@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    requireAuth(request);
+    await requireAuth(request);
     const { id } = await params;
     const db = getDb();
 

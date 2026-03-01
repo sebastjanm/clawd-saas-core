@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   console.log('📢 ROUTER URL:', ROUTER_URL);
   
   try {
-    requireAuth(request);
+    await requireAuth(request);
     const res = await fetch(`${ROUTER_URL}/pipeline/health`, {
       signal: AbortSignal.timeout(5000),
       cache: 'no-store', // Force no cache

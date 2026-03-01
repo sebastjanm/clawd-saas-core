@@ -12,7 +12,7 @@ export async function GET(
   { params }: { params: Promise<{ name: string }> },
 ) {
   try {
-    requireAuth(request);
+    await requireAuth(request);
     const { name } = await params;
     if (!(name in AGENT_META)) throw new NotFoundError('Agent');
 

@@ -50,7 +50,7 @@ async function getAgentStatuses(): Promise<Record<string, AgentStatus>> {
 
 export async function GET(request: Request) {
   try {
-    requireAuth(request);
+    await requireAuth(request);
     const { searchParams } = new URL(request.url);
     const project = searchParams.get('project');
 

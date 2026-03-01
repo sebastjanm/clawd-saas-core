@@ -6,7 +6,7 @@ const ROUTER_URL = process.env.PIPELINE_ROUTER_URL || 'http://127.0.0.1:4001';
 
 export async function GET(request: Request) {
   try {
-    requireAuth(request);
+    await requireAuth(request);
     const res = await fetch(`${ROUTER_URL}/pipeline/settings`, { cache: 'no-store' });
     if (!res.ok) {
       return NextResponse.json({ error: 'Router error' }, { status: res.status });
