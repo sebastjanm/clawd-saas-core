@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useProjects } from '@/shared/hooks/useProjects';
 
 function isActive(pathname: string, href: string): boolean {
@@ -11,6 +11,13 @@ function isActive(pathname: string, href: string): boolean {
 
 export function Navigation() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/login');
+    router.refresh();
+  }
   const { projects } = useProjects();
 
   // Filter out the "All projects" placeholder
@@ -58,6 +65,19 @@ export function Navigation() {
               </Link>
             );
           })}
+        </div>
+
+        {/* Logout */}
+        <div className="px-2 py-4 border-t border-[var(--border)]">
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]/50 transition-all duration-200 min-h-[44px]"
+          >
+            <span className="text-base shrink-0">🚪</span>
+            <span className="text-[var(--hig-callout)] font-medium opacity-0 transition-opacity duration-300 group-hover:opacity-100 whitespace-nowrap">
+              Logout
+            </span>
+          </button>
         </div>
       </nav>
 
