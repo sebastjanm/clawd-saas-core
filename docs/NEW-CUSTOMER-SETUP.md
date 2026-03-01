@@ -1,253 +1,216 @@
-# 🚀 EasyAI Start — New Customer Setup Guide
+# 🚀 EasyAI Start — New Customer Setup
 
-**For:** Non-technical team members
-**Time:** ~15 minutes
-**What you need:** Hetzner account, customer's company name, domain (optional)
+## Two Roles
 
----
+| Task | Who | Where |
+|------|-----|-------|
+| Create VPS + run setup | **Admin** (Sebastjan or Oly) | Slack/Telegram request |
+| DNS, customer config, communication | **You** (Account Manager) | Your laptop |
 
-## Step 1: Create a VPS on Hetzner
-
-1. Go to https://console.hetzner.cloud
-2. Click **"Add Server"**
-3. Choose these settings:
-   - **Location:** Nuremberg (or closest to customer)
-   - **Image:** Ubuntu 22.04
-   - **Type:** CX22 (2 vCPU, 4 GB RAM) — €4.35/month
-   - **SSH Key:** Select "easyai-deploy" (already saved in Hetzner)
-   - **Name:** customer name, e.g. `easyai-mizarstvo-hrast`
-4. Click **"Create & Buy Now"**
-5. **Write down the IP address** (e.g. `168.119.xxx.xxx`)
+You don't need to install anything or use a terminal. Everything you need is in a browser.
 
 ---
 
-## Step 2: Point the domain (skip if no domain yet)
+## Your Job (Account Manager)
 
-1. Go to the customer's DNS provider (Cloudflare, GoDaddy, etc.)
+### Before setup: Collect customer info
+
+Fill in this form and send it to Sebastjan on Slack/Telegram:
+
+```
+Company name: 
+Company slug: (lowercase-with-dashes, e.g. mizarstvo-hrast)
+Language: (sl / en / de / hr)
+Domain: (e.g. factory.mizarstvo-hrast.si — or "none" if no domain yet)
+Contact person:
+Contact email:
+Website:
+Writing tone: (professional / casual / friendly / expert)
+Target audience: (who reads their content?)
+Special instructions: (any content rules, topics to avoid, etc.)
+```
+
+**Example:**
+```
+Company name: Mizarstvo Hrast
+Company slug: mizarstvo-hrast
+Language: sl
+Domain: factory.hrast.si
+Contact person: Janez Novak
+Contact email: janez@hrast.si
+Website: https://www.hrast.si
+Writing tone: professional
+Target audience: Homeowners looking for custom furniture
+Special instructions: Never mention competitors. Focus on Slovenian oak.
+```
+
+---
+
+### After setup: You'll receive from Admin
+
+Within 30 minutes of your request, Admin will send you:
+
+| What | Example |
+|------|---------|
+| Dashboard URL | `https://factory.hrast.si` |
+| Access token | `a1b2c3d4e5f6...` |
+| VPS IP | `168.119.45.123` |
+
+---
+
+### Step 1: Point the domain (if customer has one)
+
+1. Ask the customer for access to their DNS settings (Cloudflare, GoDaddy, etc.)
+   — OR ask them to add this record themselves:
 2. Add an **A record**:
-   - **Name:** e.g. `factory` (for factory.customer.com)
-   - **Value:** the IP address from Step 1
-   - **TTL:** Auto
-3. Wait 5-10 minutes for DNS to propagate
+   - **Type:** A
+   - **Name:** `factory` (or whatever subdomain they want)
+   - **Value:** the VPS IP address Admin gave you
+   - **TTL:** Auto / 300
+3. Wait 5-10 minutes
+4. Test: open `https://factory.hrast.si` in your browser — you should see a login page
 
-You can check if it works: `ping factory.customer.com`
-
----
-
-## Step 3: Connect to the VPS
-
-Open Terminal (Mac) or Command Prompt (Windows with SSH):
-
-```
-ssh root@168.119.xxx.xxx
-```
-
-Type `yes` when asked about fingerprint.
+> **No domain yet?** Skip this step. The dashboard works at `http://VPS-IP:4000` but without HTTPS. Add the domain later.
 
 ---
 
-## Step 4: Create a user
+### Step 2: Test the login
 
-Don't run the factory as root. Create a normal user:
+1. Open the dashboard URL in your browser
+2. Enter the access token
+3. You should see the dashboard with the customer's project name
 
-```
-adduser easyai
-```
-
-- Set a password (write it down somewhere safe)
-- Press Enter for all the other questions
-
-Give the user admin rights:
-
-```
-usermod -aG sudo easyai
-```
-
-Allow the user to use SSH:
-
-```
-cp -r ~/.ssh /home/easyai/.ssh
-chown -R easyai:easyai /home/easyai/.ssh
-```
-
-Switch to the new user:
-
-```
-su - easyai
-```
+If it works → continue. If not → message Admin.
 
 ---
 
-## Step 5: Run the setup script
+### Step 3: Send login details to customer
 
-Copy and paste this. Replace the four values:
-
-```
-curl -sL https://raw.githubusercontent.com/sebastjanm/clawd-saas-core/main/provision-customer.sh -o setup.sh
-chmod +x setup.sh
-./setup.sh "CUSTOMER-SLUG" "COMPANY NAME" "LANGUAGE" "DOMAIN"
-```
-
-**Replace:**
-| Placeholder | What to put | Example |
-|-------------|-------------|---------|
-| CUSTOMER-SLUG | lowercase with dashes | `mizarstvo-hrast` |
-| COMPANY NAME | full name in quotes | `"Mizarstvo Hrast"` |
-| LANGUAGE | `sl`, `en`, `de`, `hr` | `sl` |
-| DOMAIN | customer's domain | `factory.hrast.si` |
-
-**Full example:**
-```
-./setup.sh mizarstvo-hrast "Mizarstvo Hrast" sl factory.hrast.si
-```
-
-☕ Wait about 3 minutes. Everything installs automatically.
+Use this email template:
 
 ---
 
-## Step 6: Save the credentials
+**Subject:** Your AI Content Factory is ready 🚀
 
-The script prints:
+Hi [Name],
+
+Your AI content factory is set up and ready!
+
+**How to access your dashboard:**
+1. Open this link: [Dashboard URL]
+2. Enter this access token: [Token]
+3. That's it — you're in!
+
+**What you'll see:**
+- **Pipeline** — your articles moving through writing, editing, and publishing
+- **Library** — all published content
+- **Settings** — pause/resume content production, adjust daily limits
+
+Your content pipeline is currently **paused**. This gives you time to look around and make sure everything looks good. When you're ready to start producing content, just reply to this email and we'll activate it.
+
+If you have any questions, just reply here.
+
+Best,
+[Your name]
+
+---
+
+### Step 4: Customer says "go" → Unpause
+
+When the customer is ready, message Admin on Slack/Telegram:
 
 ```
-🎉 DONE
-============================================
-Customer:   Mizarstvo Hrast (mizarstvo-hrast)
-Dashboard:  https://factory.hrast.si
-🔑 Token: a1b2c3d4e5f6...
+Unpause: mizarstvo-hrast
 ```
 
-**⚠️ COPY THE TOKEN NOW.** This is the customer's login password.
+Admin will activate it. Content starts flowing within minutes.
 
-Save in the customer spreadsheet:
+---
+
+### Step 5: Save everything
+
+Add to our **Customer Spreadsheet**:
 
 | Field | Value |
 |-------|-------|
 | Company | Mizarstvo Hrast |
 | Slug | mizarstvo-hrast |
-| VPS IP | 168.119.xxx.xxx |
+| VPS IP | 168.119.45.123 |
 | Domain | factory.hrast.si |
-| Token | a1b2c3d4e5f6... |
+| Token | a1b2c3... |
 | Language | sl |
-| Date | 2026-03-01 |
+| Status | Active / Paused |
+| Start date | 2026-03-01 |
+| Monthly fee | €___/month |
 
 ---
 
-## Step 7: Register for health monitoring
+## After Onboarding
 
-SSH into **our main server** (not the customer's VPS):
+### Customer wants to pause content production
+Message Admin: `Pause: mizarstvo-hrast`
 
+### Customer forgot their token
+Message Admin: `Reset token: mizarstvo-hrast`
+You'll get a new token to send to the customer.
+
+### Customer wants to change content settings
+Message Admin with the changes:
 ```
-ssh clawdbot@OUR-SERVER-IP
-echo "mizarstvo-hrast|168.119.xxx.xxx|4001" >> ~/.saas-customers
-```
-
-Test:
-```
-~/clawd-saas-core/scripts/customer-health.sh
-```
-
-Should show: `✅ mizarstvo-hrast — up 0.0h`
-
----
-
-## Step 8: Configure the project
-
-On the **customer's VPS**:
-
-```
-ssh easyai@168.119.xxx.xxx
-nano ~/clawd-saas-core/projects/mizarstvo-hrast.json
+mizarstvo-hrast:
+- Change tone to "casual"  
+- Add instruction: "Include pricing in every article"
+- Increase daily limit to 3
 ```
 
-Fill in these fields:
-- `website` → customer's website
-- `contact.primary_name` → contact person name
-- `contact.email` → their email
-- `writing.tone` → "professional", "casual", "friendly"
-- `writing.target_audience` → who reads their content
-- `writing.guidelines` → specific content instructions
+### Dashboard is down
+Message Admin: `Dashboard down: mizarstvo-hrast`
+Admin will fix it (usually takes 5 minutes).
 
-Save: `Ctrl+O`, then `Ctrl+X`
-
----
-
-## Step 9: Send login details to customer
-
-Email template:
-
-> **Subject:** Your AI Content Factory is ready
->
-> Hi [Name],
->
-> Your content factory is live!
->
-> **Dashboard:** https://factory.your-domain.com
-> **Access token:** [paste token here]
->
-> To log in: open the URL, enter the token, done.
->
-> Your pipeline is currently **paused**. Let us know when you're ready to start producing content.
-
----
-
-## Step 10: Unpause when ready
-
-When customer says go, SSH into their VPS:
-
-```
-ssh easyai@168.119.xxx.xxx
-curl -X POST http://localhost:4001/pipeline/pause \
-  -H 'Content-Type: application/json' \
-  -d '{"project":"mizarstvo-hrast","paused":false}'
-```
-
-Content starts flowing! 🎉
-
----
-
-## Troubleshooting
-
-**Dashboard won't load:**
-```
-ssh easyai@VPS-IP
-pm2 list                    # Check if services are running
-pm2 restart saas-dashboard  # Restart dashboard
-pm2 restart saas-router     # Restart router
-```
-
-**"502 Bad Gateway":**
-```
-pm2 restart saas-dashboard
-```
-
-**Customer forgot their token:**
-```
-ssh easyai@VPS-IP
-NEW_TOKEN=$(openssl rand -hex 24)
-echo "New token: $NEW_TOKEN"
-sed -i "s/DASHBOARD_TOKEN=.*/DASHBOARD_TOKEN=$NEW_TOKEN/" ~/clawd-saas-core/.env
-cp ~/clawd-saas-core/.env ~/clawd-saas-core/dashboard/.env.local
-pm2 restart saas-dashboard
-```
-Send the new token to the customer.
-
-**Health check says "unreachable":**
-```
-ssh easyai@VPS-IP        # If this fails → VPS is down → restart in Hetzner console
-pm2 list                 # If services stopped → pm2 restart all
-```
+### Customer wants to cancel
+Message Admin: `Cancel: mizarstvo-hrast`
+Admin will shut down the VPS. Update the spreadsheet.
 
 ---
 
 ## Checklist (copy for each customer)
 
-- [ ] Hetzner VPS created
-- [ ] Domain A record pointed
-- [ ] Setup script completed
-- [ ] Token saved in spreadsheet
-- [ ] Added to health monitoring
-- [ ] Project config filled in
-- [ ] Login details sent to customer
-- [ ] Customer confirmed settings
-- [ ] Pipeline unpaused
+### Before setup
+- [ ] Customer info form filled in
+- [ ] Sent to Admin on Slack/Telegram
+- [ ] Monthly fee agreed
+
+### After Admin confirms setup
+- [ ] Received dashboard URL + token + IP
+- [ ] Domain pointed (A record)
+- [ ] Login tested (you can see the dashboard)
+- [ ] Login details emailed to customer
+- [ ] Customer spreadsheet updated
+
+### Go live
+- [ ] Customer confirmed ready
+- [ ] Asked Admin to unpause
+- [ ] Admin confirmed pipeline is running
+- [ ] First article published (check after 24h)
+
+---
+
+## FAQ
+
+**Q: How long does setup take?**
+A: Admin needs about 30 minutes from your request.
+
+**Q: Can I access the dashboard from my phone?**
+A: Yes, it works on mobile browsers.
+
+**Q: How many articles does it produce per day?**
+A: Default is 1/day. Can be increased in settings.
+
+**Q: What if the customer's domain isn't ready yet?**
+A: Start without it. We can add HTTPS later.
+
+**Q: Can one customer have multiple projects?**
+A: Yes, but each project is set up separately. Ask Admin.
+
+**Q: Where do published articles go?**
+A: Depends on the integration (WordPress, custom API, etc.). Ask Admin during setup.
