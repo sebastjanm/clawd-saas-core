@@ -2,19 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-
-const NAV_ITEMS = [
-  { href: '/', icon: '🏠', label: 'Dashboard' },
-  { href: '/agents', icon: '🤖', label: 'Agents' },
-  { href: '/process', icon: '⚙️', label: 'Process' },
-  { href: '/pipeline', icon: '📋', label: 'Pipeline' },
-  { href: '/overview', icon: '🏭', label: 'Overview' },
-  { href: '/social', icon: '🐝', label: 'Social' },
-  { href: '/strategy', icon: '🐺', label: 'Strategy' },
-  { href: '/library', icon: '📚', label: 'Library' },
-  { href: '/projects', icon: '📁', label: 'Projects' },
-  { href: '/usage', icon: '💰', label: 'Usage' },
-] as const;
+import { useProjects } from '@/shared/hooks/useProjects';
 
 function isActive(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/' || pathname === '';
@@ -23,6 +11,13 @@ function isActive(pathname: string, href: string): boolean {
 
 export function Navigation() {
   const pathname = usePathname();
+  const { projects } = useProjects();
+
+  // Filter out the "All projects" placeholder
+  const realProjects = projects.filter((p) => p.id !== '');
+
+  // Build nav items dynamically based on project count
+  const NAV_ITEMS = buildNavItems(realProjects);
 
   return (
     <>
@@ -53,7 +48,6 @@ export function Navigation() {
                     : 'text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]/50'
                 }`}
               >
-                {/* Active left accent */}
                 {active && (
                   <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-[var(--accent)] transition-all" />
                 )}
@@ -67,9 +61,9 @@ export function Navigation() {
         </div>
       </nav>
 
-      {/* Mobile: bottom tab bar */}
+      {/* Mobile: bottom tab bar (top 5 items only) */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-[var(--border)] bg-[var(--nav-bg)] backdrop-blur-2xl md:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.slice(0, 5).map((item) => {
           const active = isActive(pathname, item.href);
           return (
             <Link
@@ -85,7 +79,6 @@ export function Navigation() {
               <span className="text-[var(--hig-caption1)] font-semibold uppercase tracking-wider">
                 {item.label}
               </span>
-              {/* Active blue dot */}
               {active && (
                 <span className="absolute bottom-1 h-1 w-1 rounded-full bg-[var(--accent)]" />
               )}
@@ -95,4 +88,39 @@ export function Navigation() {
       </nav>
     </>
   );
+}
+
+type NavItem = { href: string; icon: string; label: string };
+
+function buildNavItems(projects: { id: string; label: string }[]): NavItem[] {
+  // Single project: navigation goes directly to /project/[slug]/*
+  // Multi project: show global views with project dropdowns
+  if (projects.length === 1) {
+    const slug = projects[0].id;
+    const name = projects[0].label
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+    return [
+      { href: '/', icon: '🏠', label: 'Dashboard' },
+      { href: `/project/${slug}/pipeline`, icon: '📋', label: 'Pipeline' },
+      { href: `/project/${slug}/social`, icon: '🐝', label: 'Social' },
+      { href: `/project/${slug}/library`, icon: '📚', label: 'Library' },
+      { href: `/project/${slug}/agents`, icon: '🤖', label: 'Agents' },
+      { href: `/project/${slug}/settings`, icon: '⚙️', label: 'Settings' },
+      { href: '/usage', icon: '💰', label: 'Usage' },
+    ];
+  }
+
+  // Multi-project: global views + projects page
+  return [
+    { href: '/', icon: '🏠', label: 'Dashboard' },
+    { href: '/pipeline', icon: '📋', label: 'Pipeline' },
+    { href: '/overview', icon: '🏭', label: 'Overview' },
+    { href: '/social', icon: '🐝', label: 'Social' },
+    { href: '/library', icon: '📚', label: 'Library' },
+    { href: '/agents', icon: '🤖', label: 'Agents' },
+    { href: '/strategy', icon: '🐺', label: 'Strategy' },
+    { href: '/projects', icon: '📁', label: 'Projects' },
+    { href: '/usage', icon: '💰', label: 'Usage' },
+  ];
 }
