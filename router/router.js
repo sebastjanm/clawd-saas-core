@@ -639,6 +639,24 @@ async function handleAgentCompletion(sourceAgent, project, sourceJobId) {
       result.skipped.push(`${nextAgent}/${proj}: publishing_paused`);
       continue;
     }
+
+    // publish_mode gate: if 'approval', move ready→awaiting_approval instead of spawning Lana
+    if (nextAgent === 'lana') {
+      const projSettings = getProjectSettings(proj);
+      if (projSettings.publish_mode === 'approval') {
+        const readyArticles = findArticles('ready', proj, 'lana');
+        if (readyArticles.length > 0) {
+          const wdb = getWriteDb();
+          for (const a of readyArticles) {
+            wdb.prepare("UPDATE articles SET status = 'awaiting_approval', updated_at = datetime('now') WHERE id = ?").run(a.id);
+            writeArticleEvent(a.id, proj, 'moved_to_approval', { reason: 'publish_mode=approval', agent: 'router' });
+            log('INFO', `publish_mode=approval: article ${a.id} → awaiting_approval`);
+          }
+        }
+        result.skipped.push(`lana/${proj}: publish_mode=approval`);
+        continue;
+      }
+    }
     if (nextAgent !== 'lana' && nextAgent !== 'bea' && isGeneratingPaused(proj)) {
       log('INFO', `Chain skip ${nextAgent}/${proj}: generating_paused`);
       result.skipped.push(`${nextAgent}/${proj}: generating_paused`);
@@ -1051,7 +1069,7 @@ async function pollForStuckArticles() {
   try {
     const d = getDb();
     const autoApproveProjects = d.prepare(
-      "SELECT project FROM project_settings WHERE auto_approve = 1"
+      "SELECT project FROM project_settings WHERE auto_approve = 1 OR vacation_mode = 1"
     ).all();
     if (autoApproveProjects.length > 0) {
       const wdb = getWriteDb();
@@ -1066,7 +1084,7 @@ async function pollForStuckArticles() {
           for (const a of articles) {
             writeArticleEvent(a.id, project, 'auto_approved', {
               agent: 'router', agentType: 'system',
-              phase: 'awaiting_approval', detail: 'Vacation mode: auto-approved',
+              phase: 'awaiting_approval', detail: 'Auto-approved (auto_approve or vacation_mode)',
             });
           }
         }
