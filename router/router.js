@@ -43,15 +43,15 @@ process.on('unhandledRejection', (reason) => {
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const PORT = parseInt(process.env.PIPELINE_ROUTER_PORT || '4001', 10);
-const DB_PATH = process.env.PIPELINE_DB || '/home/clawdbot/clawd/content-pipeline/pipeline.db';
+const DB_PATH = process.env.PIPELINE_DB || `${process.env.HOME}/clawd-saas-core/db/pipeline.db`;
 const HOOKS_URL = process.env.HOOKS_URL || 'http://127.0.0.1:18789/hooks/agent';
 const HOOKS_TOKEN = process.env.HOOKS_TOKEN || 'f03286cbf278e084e597e42eb18346f1c14aa02f2e4aa2dc58809a58809a9edc';
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || '';
 const COOLDOWN_MS = parseInt(process.env.COOLDOWN_MS || '300000', 10); // 5 min
 const LOG_DIR = process.env.LOG_DIR || join(__dirname, 'logs');
-const PROJECTS_DIR = process.env.PROJECTS_DIR || '/home/clawdbot/clawd/content-pipeline/projects';
+const PROJECTS_DIR = process.env.PROJECTS_DIR || `${process.env.HOME}/clawd-saas-core/projects`;
 const STATE_FILE = join(__dirname, 'router-state.json');
-const SESSIONS_FILE = process.env.SESSIONS_FILE || '/home/clawdbot/.openclaw/agents/main/sessions/sessions.json';
+const SESSIONS_FILE = process.env.SESSIONS_FILE || `${process.env.HOME}/.openclaw/agents/main/sessions/sessions.json`;
 
 // ─── Session Token Reader ─────────────────────────────────────────────────────
 

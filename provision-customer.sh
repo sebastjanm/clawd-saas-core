@@ -173,6 +173,8 @@ cd "$INSTALL_DIR"
 PIPELINE_DB="$INSTALL_DIR/db/pipeline.db" \
 PROJECTS_DIR="$INSTALL_DIR/projects" \
 PIPELINE_ROUTER_PORT=$ROUTER_PORT \
+HOOKS_URL="http://127.0.0.1:18789/hooks/agent" \
+HOOKS_TOKEN="$GATEWAY_TOKEN" \
 pm2 start router/router.js --name saas-router
 
 cd "$INSTALL_DIR/dashboard"
