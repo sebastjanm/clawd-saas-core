@@ -25,13 +25,16 @@
     "auth": {
       "mode": "token",
       "token": "{{GATEWAY_TOKEN}}"
-    }
+    },
+    "mode": "local"
   },
   "hooks": {
     "enabled": true,
     "path": "/hooks",
     "token": "{{WEBHOOK_TOKEN}}",
     "allowRequestSessionKey": true,
-    "allowedSessionKeyPrefixes": ["pipeline:"]
+    "allowedSessionKeyPrefixes": [
+      "pipeline:"
+    ]
   }
 }
