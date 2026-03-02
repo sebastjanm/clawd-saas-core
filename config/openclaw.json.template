@@ -10,12 +10,9 @@
   "auth": {
     "profiles": {
       "{{PROVIDER}}:default": {
+        "type": "api_key",
         "provider": "{{PROVIDER}}",
-        "mode": "api_key",
-        "key": {
-          "source": "env",
-          "id": "{{PROVIDER_ENV_KEY}}"
-        }
+        "key": "${{{PROVIDER_ENV_KEY}}}"
       }
     }
   },
