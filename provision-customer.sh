@@ -42,11 +42,13 @@ else
   DEFAULT_MODEL="${DEFAULT_MODEL:-anthropic/claude-sonnet-4-6}"
 fi
 
-# Set provider env key name
+# Set provider env key name and base URL
 if [[ "$PROVIDER" == "openai" ]]; then
   PROVIDER_ENV_KEY="OPENAI_API_KEY"
+  PROVIDER_BASE_URL="https://api.openai.com/v1"
 else
   PROVIDER_ENV_KEY="ANTHROPIC_API_KEY"
+  PROVIDER_BASE_URL="https://api.anthropic.com"
 fi
 
 # Prompt for API key if not provided
@@ -200,6 +202,7 @@ sed -e "s|{{PROVIDER}}|$PROVIDER|g" \
     -e "s|{{GATEWAY_TOKEN}}|$GATEWAY_TOKEN|g" \
     -e "s|{{WEBHOOK_TOKEN}}|$WEBHOOK_TOKEN|g" \
     -e "s|{{PROVIDER_ENV_KEY}}|$PROVIDER_ENV_KEY|g" \
+    -e "s|{{PROVIDER_BASE_URL}}|$PROVIDER_BASE_URL|g" \
     "$INSTALL_DIR/config/openclaw.json.template" > ~/.openclaw/openclaw.json
 openclaw gateway start > /dev/null 2>&1 || true
 sleep 2

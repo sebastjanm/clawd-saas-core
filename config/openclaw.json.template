@@ -33,7 +33,9 @@
   "models": {
     "providers": {
       "{{PROVIDER}}": {
-        "apiKey": "${{{PROVIDER_ENV_KEY}}}"
+        "apiKey": "${{{PROVIDER_ENV_KEY}}}",
+        "baseUrl": "{{PROVIDER_BASE_URL}}",
+        "models": []
       }
     }
   }
