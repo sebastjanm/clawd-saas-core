@@ -1,23 +1,37 @@
 {
-  "provider": "{{PROVIDER}}",
-  "providerApiKey": "{{LLM_API_KEY}}",
-  "model": "{{DEFAULT_MODEL}}",
-  "cacheRetention": "long",
-  "gateway": {
-    "token": "{{GATEWAY_TOKEN}}"
+  "agents": {
+    "defaults": {
+      "maxConcurrent": 3,
+      "model": {
+        "primary": "{{DEFAULT_MODEL}}"
+      }
+    }
+  },
+  "auth": {
+    "profiles": {
+      "{{PROVIDER}}:default": {
+        "provider": "{{PROVIDER}}",
+        "mode": "api_key"
+      }
+    }
+  },
+  "env": {
+    "{{PROVIDER_ENV_KEY}}": "{{LLM_API_KEY}}"
   },
   "cron": {
     "enabled": true
   },
+  "gateway": {
+    "auth": {
+      "mode": "token",
+      "token": "{{GATEWAY_TOKEN}}"
+    }
+  },
   "hooks": {
     "enabled": true,
     "path": "/hooks",
-    "prefixes": ["pipeline:"],
-    "tokens": ["{{WEBHOOK_TOKEN}}"]
-  },
-  "agents": {
-    "defaults": {
-      "maxConcurrent": 3
-    }
+    "token": "{{WEBHOOK_TOKEN}}",
+    "allowRequestSessionKey": true,
+    "allowedSessionKeyPrefixes": ["pipeline:"]
   }
 }

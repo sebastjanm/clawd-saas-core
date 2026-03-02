@@ -37,9 +37,16 @@ fi
 
 # Set default model based on provider
 if [[ "$PROVIDER" == "openai" ]]; then
-  DEFAULT_MODEL="${DEFAULT_MODEL:-gpt-4o}"
+  DEFAULT_MODEL="${DEFAULT_MODEL:-openai/gpt-4o}"
 else
-  DEFAULT_MODEL="${DEFAULT_MODEL:-claude-sonnet-4-6}"
+  DEFAULT_MODEL="${DEFAULT_MODEL:-anthropic/claude-sonnet-4-6}"
+fi
+
+# Set provider env key name
+if [[ "$PROVIDER" == "openai" ]]; then
+  PROVIDER_ENV_KEY="OPENAI_API_KEY"
+else
+  PROVIDER_ENV_KEY="ANTHROPIC_API_KEY"
 fi
 
 # Prompt for API key if not provided
@@ -192,6 +199,7 @@ sed -e "s|{{PROVIDER}}|$PROVIDER|g" \
     -e "s|{{DEFAULT_MODEL}}|$DEFAULT_MODEL|g" \
     -e "s|{{GATEWAY_TOKEN}}|$GATEWAY_TOKEN|g" \
     -e "s|{{WEBHOOK_TOKEN}}|$WEBHOOK_TOKEN|g" \
+    -e "s|{{PROVIDER_ENV_KEY}}|$PROVIDER_ENV_KEY|g" \
     "$INSTALL_DIR/config/openclaw.json.template" > ~/.openclaw/openclaw.json
 openclaw gateway start > /dev/null 2>&1 || true
 sleep 2
