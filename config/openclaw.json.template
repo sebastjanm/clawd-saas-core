@@ -7,15 +7,6 @@
       }
     }
   },
-  "auth": {
-    "profiles": {
-      "{{PROVIDER}}:default": {
-        "type": "api_key",
-        "provider": "{{PROVIDER}}",
-        "key": "${{{PROVIDER_ENV_KEY}}}"
-      }
-    }
-  },
   "env": {
     "{{PROVIDER_ENV_KEY}}": "{{LLM_API_KEY}}"
   },
@@ -38,5 +29,12 @@
       "hook:",
       "pipeline:"
     ]
+  },
+  "models": {
+    "providers": {
+      "{{PROVIDER}}": {
+        "apiKey": "${{{PROVIDER_ENV_KEY}}}"
+      }
+    }
   }
 }
