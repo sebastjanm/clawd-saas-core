@@ -22,6 +22,8 @@ INSTALL_DIR="$HOME/clawd-saas-core"
 DASHBOARD_PORT=4000
 ROUTER_PORT=4001
 DASHBOARD_TOKEN=$(openssl rand -hex 24)
+GATEWAY_TOKEN=$(openssl rand -hex 24)
+WEBHOOK_TOKEN=$(openssl rand -hex 32)
 
 echo "============================================"
 echo "🏭 Provisioning: $COMPANY ($SLUG)"
@@ -30,13 +32,13 @@ echo "   Domain:   ${DOMAIN:-none}"
 echo "============================================"
 
 # 1. System packages
-echo "📦 1/9: System packages..."
+echo "📦 1/12: System packages..."
 sudo apt-get update -qq
 sudo apt-get install -y -qq curl git build-essential sqlite3 python3 > /dev/null 2>&1
 echo "   ✅ Done"
 
 # 2. Node.js (pinned version via nvm)
-echo "📦 2/9: Node.js v${NODE_VERSION}..."
+echo "📦 2/12: Node.js v${NODE_VERSION}..."
 export NVM_DIR="$HOME/.nvm"
 if [ ! -s "$NVM_DIR/nvm.sh" ]; then
   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash 2>/dev/null
@@ -47,12 +49,17 @@ nvm alias default "$NODE_VERSION" > /dev/null 2>&1
 echo "   ✅ Node $(node -v)"
 
 # 3. PM2
-echo "📦 3/9: PM2..."
+echo "📦 3/12: PM2..."
 command -v pm2 &> /dev/null || npm install -g pm2 > /dev/null 2>&1
 echo "   ✅ Ready"
 
-# 4. Clone/update
-echo "📦 4/9: Repository..."
+# 4. OpenClaw
+echo "📦 4/12: OpenClaw..."
+npm install -g openclaw > /dev/null 2>&1
+echo "   ✅ OpenClaw $(openclaw --version 2>/dev/null || echo 'installed')"
+
+# 5. Clone/update
+echo "📦 5/12: Repository..."
 if [ ! -d "$INSTALL_DIR" ]; then
   git clone "$REPO_URL" "$INSTALL_DIR" 2>/dev/null
   echo "   ✅ Cloned"
@@ -62,14 +69,14 @@ else
 fi
 cd "$INSTALL_DIR"
 
-# 5. Dependencies
-echo "📦 5/9: Dependencies..."
+# 6. Dependencies
+echo "📦 6/12: Dependencies..."
 npm install --production > /dev/null 2>&1
 cd dashboard && npm install > /dev/null 2>&1 && cd ..
 echo "   ✅ Done"
 
-# 6. Database
-echo "📦 6/9: Database..."
+# 7. Database
+echo "📦 7/12: Database..."
 mkdir -p db
 if [ ! -f "db/pipeline.db" ]; then
   sqlite3 db/pipeline.db < db/schema.sql
@@ -78,8 +85,8 @@ else
   echo "   ✅ Exists"
 fi
 
-# 7. Customer config
-echo "📦 7/9: Configuration..."
+# 8. Customer config
+echo "📦 8/12: Configuration..."
 
 cat > .env << ENVEOF
 # EasyAI Start — $COMPANY
@@ -138,8 +145,25 @@ try {
 db.close();
 "
 
-# 8. Build & launch
-echo "📦 8/9: Build & launch..."
+# 9. OpenClaw gateway
+echo "📦 9/12: OpenClaw gateway..."
+mkdir -p ~/.openclaw
+sed -e "s|{{PROVIDER}}|${PROVIDER:-anthropic}|g" \
+    -e "s|{{LLM_API_KEY}}|${API_KEY:-}|g" \
+    -e "s|{{DEFAULT_MODEL}}|${DEFAULT_MODEL:-claude-sonnet-4-6}|g" \
+    -e "s|{{GATEWAY_TOKEN}}|$GATEWAY_TOKEN|g" \
+    -e "s|{{WEBHOOK_TOKEN}}|$WEBHOOK_TOKEN|g" \
+    "$INSTALL_DIR/config/openclaw.json.template" > ~/.openclaw/openclaw.json
+openclaw gateway start > /dev/null 2>&1 || true
+sleep 2
+if curl -sf http://127.0.0.1:18789 > /dev/null 2>&1; then
+  echo "   ✅ Gateway running"
+else
+  echo "   ⚠️  Gateway may not be responding yet (will retry after launch)"
+fi
+
+# 10. Build & launch
+echo "📦 10/12: Build & launch..."
 cd "$INSTALL_DIR/dashboard" && npm run build > /dev/null 2>&1
 
 pm2 delete saas-router 2>/dev/null || true
@@ -162,8 +186,8 @@ pm2 start npm --name saas-dashboard -- start -- -p $DASHBOARD_PORT
 pm2 save > /dev/null 2>&1
 pm2 startup 2>/dev/null | grep "sudo" | bash 2>/dev/null || true
 
-# 9. Caddy reverse proxy (HTTPS)
-echo "📦 9/9: HTTPS setup..."
+# 11. Caddy reverse proxy (HTTPS)
+echo "📦 11/12: HTTPS setup..."
 if [[ -n "$DOMAIN" ]]; then
   # Install Caddy if not present
   if ! command -v caddy &> /dev/null; then
@@ -189,8 +213,8 @@ else
   echo "   ⚠️  Dashboard accessible at http://<IP>:$DASHBOARD_PORT (not secure)"
 fi
 
-# Firewall
-echo "🔒 Enabling firewall..."
+# 12. Firewall
+echo "📦 12/12: Firewall..."
 sudo ufw allow 22/tcp > /dev/null 2>&1
 sudo ufw allow 80/tcp > /dev/null 2>&1
 sudo ufw allow 443/tcp > /dev/null 2>&1

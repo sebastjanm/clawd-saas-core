@@ -1,0 +1,23 @@
+{
+  "provider": "{{PROVIDER}}",
+  "providerApiKey": "{{LLM_API_KEY}}",
+  "model": "{{DEFAULT_MODEL}}",
+  "cacheRetention": "long",
+  "gateway": {
+    "token": "{{GATEWAY_TOKEN}}"
+  },
+  "cron": {
+    "enabled": true
+  },
+  "hooks": {
+    "enabled": true,
+    "path": "/hooks",
+    "prefixes": ["pipeline:"],
+    "tokens": ["{{WEBHOOK_TOKEN}}"]
+  },
+  "agents": {
+    "defaults": {
+      "maxConcurrent": 3
+    }
+  }
+}
