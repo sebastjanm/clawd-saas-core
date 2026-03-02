@@ -34,6 +34,7 @@
     "token": "{{WEBHOOK_TOKEN}}",
     "allowRequestSessionKey": true,
     "allowedSessionKeyPrefixes": [
+      "hook:",
       "pipeline:"
     ]
   }
