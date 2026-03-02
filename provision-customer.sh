@@ -270,7 +270,11 @@ cat > CUSTOMER.md << RECEIPT
 - **Provisioned:** $(date -u +"%Y-%m-%d %H:%M UTC")
 - **Dashboard:** ${DOMAIN:-http://$(hostname -I 2>/dev/null | awk '{print $1}'):$DASHBOARD_PORT}
 - **Router:** localhost:$ROUTER_PORT
+- **Gateway:** localhost:18789
 - **Domain:** ${DOMAIN:-not set}
+- **Provider:** $PROVIDER
+- **OpenClaw:** $(openclaw --version 2>/dev/null || echo "unknown")
+- **API Key:** Stored in ~/.openclaw/openclaw.json (never share!)
 RECEIPT
 
 echo ""

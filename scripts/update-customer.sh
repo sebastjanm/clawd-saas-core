@@ -78,12 +78,18 @@ update_remote() {
     npm install --production > /dev/null 2>&1
     cd dashboard && npm install > /dev/null 2>&1
 
+    echo "  📦 Updating OpenClaw..."
+    npm update -g openclaw > /dev/null 2>&1 || true
+
     echo "  🔨 Building dashboard..."
     npm run build > /dev/null 2>&1
     cd ..
 
     echo "  🔄 Restarting services..."
     pm2 restart saas-router saas-dashboard 2>&1 | grep -E "✓|online"
+
+    echo "  🔄 Restarting OpenClaw gateway..."
+    openclaw gateway restart > /dev/null 2>&1 || true
 
     echo "  🩺 Health check..."
     sleep 3
@@ -93,6 +99,13 @@ update_remote() {
     else
       echo "  ⚠️  ${slug} health check returned: \$STATUS"
       exit 1
+    fi
+
+    GW_STATUS=\$(curl -sf http://127.0.0.1:18789 > /dev/null 2>&1 && echo "ok" || echo "unreachable")
+    if [[ "\$GW_STATUS" == "ok" ]]; then
+      echo "  ✅ OpenClaw gateway healthy"
+    else
+      echo "  ⚠️  OpenClaw gateway: \$GW_STATUS"
     fi
 REMOTE
 
