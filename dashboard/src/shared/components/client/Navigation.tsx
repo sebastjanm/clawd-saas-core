@@ -33,12 +33,19 @@ export function Navigation() {
         {/* Logo */}
         <div className="flex h-14 items-center gap-3 border-b border-[var(--border)] px-4">
           <span className="text-lg shrink-0">🚀</span>
-          <span
-            className="text-sm font-bold tracking-[0.15em] text-[var(--foreground)]/80 opacity-0 transition-opacity duration-300 group-hover:opacity-100 whitespace-nowrap"
-            style={{ fontFamily: 'var(--font-mono)' }}
-          >
-            EasyAI
-          </span>
+          <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100 whitespace-nowrap overflow-hidden">
+            <span
+              className="text-sm font-bold tracking-[0.15em] text-[var(--foreground)]/80"
+              style={{ fontFamily: 'var(--font-mono)' }}
+            >
+              EasyAI
+            </span>
+            {process.env.NEXT_PUBLIC_COMPANY_NAME && (
+              <div className="text-[10px] text-[var(--muted)] leading-tight truncate">
+                {process.env.NEXT_PUBLIC_COMPANY_NAME}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Nav items */}

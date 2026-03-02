@@ -2,8 +2,12 @@ import type { Metadata } from 'next';
 import { ThemeProvider } from '@/shared/components/client/ThemeProvider';
 import './globals.css';
 
+const companyName = process.env.NEXT_PUBLIC_COMPANY_NAME;
+
 export const metadata: Metadata = {
-  title: 'EasyAI Start — AI Content Factory',
+  title: companyName
+    ? `EasyAI Start — ${companyName}`
+    : 'EasyAI Start — AI Content Factory',
   description: 'AI Content Production SaaS',
 };
 

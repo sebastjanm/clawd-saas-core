@@ -156,6 +156,7 @@ DASHBOARD_TOKEN=$DASHBOARD_TOKEN \
 PIPELINE_DB_PATH="$INSTALL_DIR/db/pipeline.db" \
 PIPELINE_ROUTER_URL="http://127.0.0.1:$ROUTER_PORT" \
 COMPANY_NAME="$COMPANY" \
+NEXT_PUBLIC_COMPANY_NAME="$COMPANY" \
 pm2 start npm --name saas-dashboard -- start -- -p $DASHBOARD_PORT
 
 pm2 save > /dev/null 2>&1
