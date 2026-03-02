@@ -11,7 +11,11 @@
     "profiles": {
       "{{PROVIDER}}:default": {
         "provider": "{{PROVIDER}}",
-        "mode": "api_key"
+        "mode": "api_key",
+        "key": {
+          "source": "env",
+          "id": "{{PROVIDER_ENV_KEY}}"
+        }
       }
     }
   },

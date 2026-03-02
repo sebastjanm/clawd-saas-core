@@ -29,7 +29,7 @@ echo "🩺 Verifying installation..."
 echo "============================================"
 
 # OpenClaw gateway
-check "OpenClaw gateway (port $GATEWAY_PORT)" "http://127.0.0.1:$GATEWAY_PORT"
+check "OpenClaw gateway (port $GATEWAY_PORT)" "http://127.0.0.1:$GATEWAY_PORT/health"
 
 # Router health
 check "Pipeline router (port $ROUTER_PORT)" "http://127.0.0.1:$ROUTER_PORT/pipeline/health"
