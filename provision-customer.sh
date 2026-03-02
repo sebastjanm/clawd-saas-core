@@ -2,18 +2,57 @@
 # ============================================================================
 # 🏭 EasyAI Start — Customer Provisioning Script
 # ============================================================================
-# Usage: ./provision-customer.sh <slug> <company> <language> [domain]
+# Usage: ./provision-customer.sh <slug> <company> <language> [domain] [--api-key KEY] [--provider anthropic|openai]
 # ============================================================================
 set -euo pipefail
 
-SLUG="${1:-}"
-COMPANY="${2:-}"
-LANG="${3:-en}"
-DOMAIN="${4:-}"
 NODE_VERSION="22"
+SLUG=""
+COMPANY=""
+LANG="en"
+DOMAIN=""
+API_KEY=""
+PROVIDER="anthropic"
+DEFAULT_MODEL=""
+
+# Parse positional and named args
+POSITIONAL=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --api-key) API_KEY="$2"; shift 2 ;;
+    --provider) PROVIDER="$2"; shift 2 ;;
+    *) POSITIONAL+=("$1"); shift ;;
+  esac
+done
+
+SLUG="${POSITIONAL[0]:-}"
+COMPANY="${POSITIONAL[1]:-}"
+LANG="${POSITIONAL[2]:-en}"
+DOMAIN="${POSITIONAL[3]:-}"
 
 if [[ -z "$SLUG" || -z "$COMPANY" ]]; then
-  echo "Usage: $0 <slug> <company> <language> [domain]"
+  echo "Usage: $0 <slug> <company> <language> [domain] [--api-key KEY] [--provider anthropic|openai]"
+  exit 1
+fi
+
+# Set default model based on provider
+if [[ "$PROVIDER" == "openai" ]]; then
+  DEFAULT_MODEL="${DEFAULT_MODEL:-gpt-4o}"
+else
+  DEFAULT_MODEL="${DEFAULT_MODEL:-claude-sonnet-4-6}"
+fi
+
+# Prompt for API key if not provided
+if [[ -z "$API_KEY" ]]; then
+  read -rp "Enter your AI API key: " API_KEY
+fi
+
+# Validate API key format
+if [[ "$PROVIDER" == "anthropic" && ! "$API_KEY" =~ ^sk-ant- ]]; then
+  echo "❌ Invalid Anthropic API key (must start with sk-ant-)"
+  exit 1
+elif [[ "$PROVIDER" == "openai" && ! "$API_KEY" =~ ^sk- ]]; then
+  echo "❌ Invalid OpenAI API key (must start with sk-)"
   exit 1
 fi
 
@@ -148,9 +187,9 @@ db.close();
 # 9. OpenClaw gateway
 echo "📦 9/12: OpenClaw gateway..."
 mkdir -p ~/.openclaw
-sed -e "s|{{PROVIDER}}|${PROVIDER:-anthropic}|g" \
-    -e "s|{{LLM_API_KEY}}|${API_KEY:-}|g" \
-    -e "s|{{DEFAULT_MODEL}}|${DEFAULT_MODEL:-claude-sonnet-4-6}|g" \
+sed -e "s|{{PROVIDER}}|$PROVIDER|g" \
+    -e "s|{{LLM_API_KEY}}|$API_KEY|g" \
+    -e "s|{{DEFAULT_MODEL}}|$DEFAULT_MODEL|g" \
     -e "s|{{GATEWAY_TOKEN}}|$GATEWAY_TOKEN|g" \
     -e "s|{{WEBHOOK_TOKEN}}|$WEBHOOK_TOKEN|g" \
     "$INSTALL_DIR/config/openclaw.json.template" > ~/.openclaw/openclaw.json
