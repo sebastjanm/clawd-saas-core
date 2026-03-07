@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
-  
+  // Standard mode (not standalone) - see lessons-learned
+  outputFileTracingRoot: __dirname,
 };
 
 export default nextConfig;

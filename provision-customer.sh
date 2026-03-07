@@ -228,6 +228,9 @@ HOOKS_TOKEN="$GATEWAY_TOKEN" \
 pm2 start router/router.js --name saas-router
 
 cd "$INSTALL_DIR/dashboard"
+# Rebuild native modules for current Node version (prevents better-sqlite3 mismatch)
+npm rebuild better-sqlite3 2>/dev/null || true
+
 DASHBOARD_TOKEN=$DASHBOARD_TOKEN \
 PIPELINE_DB_PATH="$INSTALL_DIR/db/pipeline.db" \
 PIPELINE_ROUTER_URL="http://127.0.0.1:$ROUTER_PORT" \
