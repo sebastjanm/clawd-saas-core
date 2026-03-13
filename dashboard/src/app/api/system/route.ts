@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
     await requireAuth(request);
-    const health = getSystemHealth();
+    const health = await getSystemHealth();
     return NextResponse.json(health);
   } catch (error) {
     return errorResponse(error);

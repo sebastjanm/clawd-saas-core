@@ -10,7 +10,7 @@ Before designing ANY article:
 
 ### 1. Project Config
 ```bash
-cat /home/clawdbot/clawd/content-pipeline/projects/PROJECT_ID.json
+cat /home/clawdbot/clawd-saas-core/projects/PROJECT_ID.json
 ```
 Check `format` field: `html_file` (standalone page) vs `api` (body-only HTML).
 
@@ -18,20 +18,20 @@ Check `format` field: `html_file` (standalone page) vs `api` (body-only HTML).
 Always read an existing published article to match the exact template:
 ```bash
 # nakupsrebra — use this as reference:
-head -200 /home/clawdbot/projects/silver-investment-landing/blog/tesla-srebrni-kovanec-1920.html
+head -200 $HOME/projects/silver-investment-landing/blog/tesla-srebrni-kovanec-1920.html
 ```
 
 ### 3. Design System (if available)
 ```bash
 # avant2subscribe:
-cat /home/clawdbot/clawd/skills/avant2subscribe/references/design-system.md
+cat $HOME/clawd/skills/avant2subscribe/references/design-system.md
 # baseman-blog:
-cat /home/clawdbot/clawd/skills/baseman-blog/references/design-system.md
+cat $HOME/clawd/skills/baseman-blog/references/design-system.md
 ```
 
 ### 4. Your Memory
 ```bash
-cat /home/clawdbot/clawd/content-pipeline/agents/zala-memory.md
+cat /home/clawdbot/clawd-saas-core/agents/zala-memory.md
 ```
 
 ---
@@ -41,7 +41,7 @@ cat /home/clawdbot/clawd/content-pipeline/agents/zala-memory.md
 Before picking up ANY article, check if downstream is clear:
 
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT COUNT(*) as blocked FROM articles WHERE project='PROJECT_FROM_ARTICLE' AND status IN ('ready','awaiting_approval')"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT COUNT(*) as blocked FROM articles WHERE project='PROJECT_FROM_ARTICLE' AND status IN ('ready','awaiting_approval')"
 ```
 
 **Replace `PROJECT_FROM_ARTICLE` with the project from the article you're about to design.**
@@ -56,7 +56,7 @@ node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT CO
 
 1. Find articles with status = `ready_for_design`:
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT id,project,title,slug,final_md FROM articles WHERE status='ready_for_design' ORDER BY updated_at ASC LIMIT 1"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT id,project,title,slug,final_md FROM articles WHERE status='ready_for_design' ORDER BY updated_at ASC LIMIT 1"
 ```
 
 2. Load project config + reference article + design system
@@ -168,8 +168,8 @@ cat > /tmp/zala-designed-ID.html << 'HTMLEOF'
 HTMLEOF
 
 # Save to DB
-node /home/clawdbot/clawd/content-pipeline/scripts/pipeline-cli.js set-content ID final_md /tmp/zala-designed-ID.html
-node /home/clawdbot/clawd/content-pipeline/scripts/pipeline-cli.js update-status ID ready
+node /home/clawdbot/clawd-saas-core/scripts/pipeline-cli.js set-content ID final_md /tmp/zala-designed-ID.html
+node /home/clawdbot/clawd-saas-core/scripts/pipeline-cli.js update-status ID ready
 ```
 
 ### API-based:
@@ -178,8 +178,8 @@ cat > /tmp/zala-designed-ID.html << 'HTMLEOF'
 [ARTICLE BODY HTML ONLY]
 HTMLEOF
 
-node /home/clawdbot/clawd/content-pipeline/scripts/pipeline-cli.js set-content ID final_md /tmp/zala-designed-ID.html
-node /home/clawdbot/clawd/content-pipeline/scripts/pipeline-cli.js update-status ID ready
+node /home/clawdbot/clawd-saas-core/scripts/pipeline-cli.js set-content ID final_md /tmp/zala-designed-ID.html
+node /home/clawdbot/clawd-saas-core/scripts/pipeline-cli.js update-status ID ready
 ```
 
 ---
@@ -200,7 +200,7 @@ node /home/clawdbot/clawd/content-pipeline/scripts/pipeline-cli.js update-status
 
 Update your memory file after each run:
 ```bash
-# /home/clawdbot/clawd/content-pipeline/agents/zala-memory.md
+# /home/clawdbot/clawd-saas-core/agents/zala-memory.md
 ```
 Track: design patterns that worked, issues found, project-specific quirks.
 

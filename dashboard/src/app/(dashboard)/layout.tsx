@@ -1,4 +1,3 @@
-import { HealthBar } from '@/features/system/components/server/HealthBar';
 import { Navigation } from '@/shared/components/client/Navigation';
 import { ThemeToggle } from '@/shared/components/client/ThemeToggle';
 
@@ -26,7 +25,6 @@ export default function DashboardLayout({
             </div>
             <div className="hidden md:block" />
             <div className="flex items-center gap-2">
-              <HealthBar />
               <ThemeToggle />
             </div>
           </div>

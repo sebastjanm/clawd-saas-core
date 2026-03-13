@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePolling } from '@/shared/hooks/usePolling';
-import { useProjects } from '@/shared/hooks/useProjects';
 import { apiPath } from '@/shared/lib/apiPath';
 import { Spinner } from '@/shared/components/client/Spinner';
 import { PROJECT_COLORS } from '@/lib/types';
@@ -14,6 +13,14 @@ interface LibraryResponse {
 }
 
 const TOKEN = typeof window !== 'undefined' ? 'tovarna_dashboard_2026' : '';
+
+const PROJECTS = [
+  { id: '', label: 'All projects' },
+  { id: 'nakupsrebra', label: 'NakupSrebra' },
+  { id: 'baseman-blog', label: 'Baseman Blog' },
+  { id: 'avant2go-subscribe', label: 'Avant2Subscribe' },
+  { id: 'lightingdesign-studio', label: 'Lighting Design' },
+];
 
 async function fetchLibrary(project?: string): Promise<Article[]> {
   const url = project
@@ -27,14 +34,22 @@ async function fetchLibrary(project?: string): Promise<Article[]> {
   return json.articles;
 }
 
-export function PublishedLibrary() {
-  const [selectedProject, setSelectedProject] = useState<string>('');
-  const { projects } = useProjects();
+export function PublishedLibrary({ initialProject }: { initialProject?: string }) {
+  // If initialProject provided, lock to it.
+  const [selectedProject, setSelectedProject] = useState<string>(initialProject || '');
+  
+  // Sync state if prop changes
+  useEffect(() => {
+    if (initialProject) setSelectedProject(initialProject);
+  }, [initialProject]);
   
   const { data: articles, loading, error } = usePolling(
     () => fetchLibrary(selectedProject || undefined),
     30000 
   );
+
+  // Hide filter if scoped
+  const showProjectFilter = !initialProject;
 
   if (loading && !articles) {
     return (
@@ -50,27 +65,29 @@ export function PublishedLibrary() {
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-3 overflow-x-auto pb-2">
-        {projects.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => setSelectedProject(p.id)}
-            className={`rounded-lg px-3.5 py-2 text-xs font-medium transition-all whitespace-nowrap ${
-              selectedProject === p.id
-                ? 'bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/20'
-                : 'text-[var(--text-quaternary)] hover:text-[var(--text-secondary)] border border-transparent'
-            }`}
-          >
-            {p.id && (
-              <span
-                className="inline-block w-2 h-2 rounded-full mr-1.5"
-                style={{ backgroundColor: PROJECT_COLORS[p.id] || 'var(--muted)' }}
-              />
-            )}
-            {p.label}
-          </button>
-        ))}
-      </div>
+      {showProjectFilter && (
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {PROJECTS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setSelectedProject(p.id)}
+              className={`rounded-lg px-3.5 py-2 text-xs font-medium transition-all whitespace-nowrap ${
+                selectedProject === p.id
+                  ? 'bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/20'
+                  : 'text-[var(--text-quaternary)] hover:text-[var(--text-secondary)] border border-transparent'
+              }`}
+            >
+              {p.id && (
+                <span
+                  className="inline-block w-2 h-2 rounded-full mr-1.5"
+                  style={{ backgroundColor: PROJECT_COLORS[p.id] || 'var(--muted)' }}
+                />
+              )}
+              {p.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3">
         {articles?.map((article) => (

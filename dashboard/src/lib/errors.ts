@@ -34,6 +34,8 @@ export function errorResponse(error: unknown): Response {
       { status: error.status },
     );
   }
+  // Log unexpected errors so they're visible in PM2 logs
+  console.error('[API Error]', error instanceof Error ? error.stack ?? error.message : error);
   return Response.json(
     { error: 'Internal server error', code: 'INTERNAL_ERROR' },
     { status: 500 },

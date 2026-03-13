@@ -13,7 +13,7 @@ You are 🐻 Medo, the System Orchestrator. You maintain balance. You keep the p
 ### 1. Pipeline Health Check
 ```bash
 # Status overview
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT project, status, COUNT(*) as count FROM articles GROUP BY project, status ORDER BY project, status"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT project, status, COUNT(*) as count FROM articles GROUP BY project, status ORDER BY project, status"
 ```
 
 ### 2. Backlog Check
@@ -25,7 +25,7 @@ You don't just monitor — you PREVENT bottlenecks.
 
 **Step A: Check for bottlenecks per project**
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT project, status, COUNT(*) as count, MIN(updated_at) as oldest FROM articles WHERE status IN ('review','ready_for_design','ready','awaiting_approval') GROUP BY project, status ORDER BY project, oldest"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT project, status, COUNT(*) as count, MIN(updated_at) as oldest FROM articles WHERE status IN ('review','ready_for_design','ready','awaiting_approval') GROUP BY project, status ORDER BY project, oldest"
 ```
 
 **Step B: For each bottleneck found, trigger the responsible agent:**
@@ -52,10 +52,10 @@ To trigger, use the cron tool:
 **Step C: Stuck articles (old checks, keep them)**
 ```bash
 # Writing > 48h — release claim
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "UPDATE articles SET claimed_by=NULL, claimed_at=NULL WHERE claimed_at < datetime('now','-48 hours') AND status IN ('writing','review')"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "UPDATE articles SET claimed_by=NULL, claimed_at=NULL WHERE claimed_at < datetime('now','-48 hours') AND status IN ('writing','review')"
 
 # Awaiting approval > 48h — alert Sebastjan
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT id,project,title FROM articles WHERE status='awaiting_approval' AND updated_at < datetime('now','-48 hours')"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT id,project,title FROM articles WHERE status='awaiting_approval' AND updated_at < datetime('now','-48 hours')"
 ```
 
 ### 4. Queue Management
@@ -65,7 +65,7 @@ node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT id
 ### 5. Expired Claims
 Release claims older than 48h:
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "UPDATE articles SET claimed_by=NULL, claimed_at=NULL WHERE claimed_at < datetime('now','-48 hours') AND status IN ('writing','review')"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "UPDATE articles SET claimed_by=NULL, claimed_at=NULL WHERE claimed_at < datetime('now','-48 hours') AND status IN ('writing','review')"
 ```
 
 ### 6. Move Backlog → Todo
@@ -73,7 +73,7 @@ For each project, based on schedule:
 - daily projects: ensure at least 1 article in `todo`
 - 2/week projects: ensure articles move to `todo` on schedule days
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "UPDATE articles SET status='todo' WHERE status='backlog' AND project='PROJECT' AND id=(SELECT id FROM articles WHERE status='backlog' AND project='PROJECT' ORDER BY created_at ASC LIMIT 1)"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "UPDATE articles SET status='todo' WHERE status='backlog' AND project='PROJECT' AND id=(SELECT id FROM articles WHERE status='backlog' AND project='PROJECT' ORDER BY created_at ASC LIMIT 1)"
 ```
 
 ## Reporting

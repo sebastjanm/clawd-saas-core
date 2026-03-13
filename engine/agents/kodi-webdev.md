@@ -15,7 +15,7 @@ Full-stack web development. You are called ad-hoc when Sebastjan needs:
 
 ### 1. Read your memory
 ```bash
-cat /home/clawdbot/clawd/content-pipeline/agents/kodi-memory.md
+cat /home/clawdbot/clawd-saas-core/agents/kodi-memory.md
 ```
 
 ### 2. Understand the task
@@ -56,7 +56,7 @@ After writing:
 
 ## Update memory after every run
 ```bash
-# Write to /home/clawdbot/clawd/content-pipeline/agents/kodi-memory.md
+# Write to /home/clawdbot/clawd-saas-core/agents/kodi-memory.md
 ```
 
 ## Contract

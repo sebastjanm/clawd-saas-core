@@ -10,18 +10,31 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { KanbanColumn } from './KanbanColumn';
 import { usePipeline } from '../../hooks/usePipeline';
-import { useProjects } from '@/shared/hooks/useProjects';
 import { updateArticleStatus } from '../../actions';
 import { Spinner } from '@/shared/components/client/Spinner';
 import { PROJECT_COLORS } from '@/lib/types';
 import type { Article, ArticleStatus } from '@/lib/types';
 
-export function KanbanBoard() {
-  const [selectedProject, setSelectedProject] = useState<string>('');
-  const { projects } = useProjects();
+const PROJECTS = [
+  { id: '', label: 'All projects' },
+  { id: 'nakupsrebra', label: 'NakupSrebra' },
+  { id: 'baseman-blog', label: 'Baseman Blog' },
+  { id: 'avant2go-subscribe', label: 'Avant2Subscribe' },
+  { id: 'lightingdesign-studio', label: 'Lighting Design' },
+];
+
+export function KanbanBoard({ initialProject }: { initialProject?: string }) {
+  // If initialProject provided, lock to it. Otherwise default to '' (all)
+  const [selectedProject, setSelectedProject] = useState<string>(initialProject || '');
+  
+  // Update state if prop changes (e.g. navigation)
+  useEffect(() => {
+    if (initialProject) setSelectedProject(initialProject);
+  }, [initialProject]);
+
   const { data: columns, loading, error, refetch } = usePipeline(selectedProject || undefined);
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
 
@@ -39,8 +52,8 @@ export function KanbanBoard() {
 
   if (error || !columns) {
     return (
-      <div className="glass rounded-lg p-4 text-sm text-[var(--error)]">
-        Failed to load pipeline: {error}
+      <div className="glass rounded-lg p-4 text-sm text-[var(--text-secondary)]">
+        Unable to load pipeline. Please refresh or try again in a moment.
       </div>
     );
   }
@@ -85,10 +98,13 @@ export function KanbanBoard() {
     }
   }
 
+  // If scoped to a specific project, hide the global filter
+  const showFilter = !initialProject;
+
   if (activeColumns.length === 0) {
     return (
       <>
-        <ProjectFilter selected={selectedProject} onChange={setSelectedProject} />
+        {showFilter && <ProjectFilter selected={selectedProject} onChange={setSelectedProject} />}
         <div className="glass rounded-lg p-8 text-center text-sm text-[var(--text-quaternary)]">
           No articles in pipeline
         </div>
@@ -98,27 +114,27 @@ export function KanbanBoard() {
 
   return (
     <>
-      <ProjectFilter selected={selectedProject} onChange={setSelectedProject} />
+      {showFilter && <ProjectFilter selected={selectedProject} onChange={setSelectedProject} />}
 
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="kanban-scroll flex gap-3 overflow-x-auto pb-4">
-        {activeColumns.map((col, i) => (
-          <KanbanColumn key={col.status} column={col} index={i} />
-        ))}
-      </div>
-      <DragOverlay>
-        {activeArticle ? (
-          <div className="glass drag-glow rounded-lg p-3">
-            <p className="text-sm font-medium text-[var(--text-primary)]">{activeArticle.title}</p>
-          </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="kanban-scroll flex gap-3 overflow-x-auto pb-4">
+          {activeColumns.map((col, i) => (
+            <KanbanColumn key={col.status} column={col} index={i} />
+          ))}
+        </div>
+        <DragOverlay>
+          {activeArticle ? (
+            <div className="glass drag-glow rounded-lg p-3">
+              <p className="text-sm font-medium text-[var(--text-primary)]">{activeArticle.title}</p>
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
     </>
   );
 }
@@ -130,11 +146,10 @@ function ProjectFilter({
   selected: string;
   onChange: (project: string) => void;
 }) {
-  const { projects } = useProjects();
   return (
     <div className="glass-static rounded-xl p-3 flex flex-wrap gap-3 items-center animate-fade-up">
       <span className="text-xs text-[var(--text-quaternary)]">Filter:</span>
-      {projects.map((p) => (
+      {PROJECTS.map((p) => (
         <button
           key={p.id}
           onClick={() => onChange(p.id)}

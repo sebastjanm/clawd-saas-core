@@ -1,4 +1,3 @@
-export const dynamic = 'force-dynamic';
 import { notFound } from 'next/navigation';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -12,7 +11,7 @@ import Link from 'next/link';
 import type { CronJob } from '@/lib/types';
 import { findCronJobsForAgent } from '@/lib/agentCron';
 
-const MEMORY_DIR = '/home/clawdbot/clawd/content-pipeline/agents';
+const MEMORY_DIR = process.env.OPENCLAW_AGENTS_DIR || process.env.SAAS_CORE_DIR || '/home/clawdbot/clawd-saas-core/engine/agents';
 
 function getAgentMemory(name: string): string | null {
   try {

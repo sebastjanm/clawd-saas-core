@@ -17,7 +17,7 @@ Called ad-hoc when Sebastjan needs:
 
 ### 1. Read your memory
 ```bash
-cat /home/clawdbot/clawd/content-pipeline/agents/orao-memory.md
+cat /home/clawdbot/clawd-saas-core/agents/orao-memory.md
 ```
 
 ### 2. Research
@@ -55,7 +55,7 @@ Format: structured report with:
 
 ## Update memory after every run
 ```bash
-# Write to /home/clawdbot/clawd/content-pipeline/agents/orao-memory.md
+# Write to /home/clawdbot/clawd-saas-core/agents/orao-memory.md
 ```
 
 ## Contract

@@ -1,7 +1,7 @@
 import { getSystemHealth } from '@/lib/server/system';
 
-export function HealthBar() {
-  const health = getSystemHealth();
+export async function HealthBar() {
+  const health = await getSystemHealth();
   const memPercent = Math.round(
     (health.memUsedMb / health.memTotalMb) * 100,
   );
@@ -17,6 +17,11 @@ export function HealthBar() {
       <span className="text-[var(--text-quaternary)]">
         Up {health.uptimeHours}h
       </span>
+      {health.gatewayUptimeHours !== undefined && (
+        <span className="text-[var(--text-quaternary)] border-l border-[var(--surface-hover)] pl-5">
+          Brain {health.gatewayUptimeHours}h
+        </span>
+      )}
     </div>
   );
 }

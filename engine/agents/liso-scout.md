@@ -20,12 +20,12 @@ Every day, look at everything on the table and make one decision per project: **
 
 ### 1. Read your memory
 ```bash
-cat /home/clawdbot/clawd/content-pipeline/agents/liso-memory.md
+cat /home/clawdbot/clawd-saas-core/agents/liso-memory.md
 ```
 
 ### 2. Load all project configs
 ```bash
-for f in /home/clawdbot/clawd/content-pipeline/projects/*.json; do
+for f in /home/clawdbot/clawd-saas-core/projects/*.json; do
   [[ "$(basename $f)" == "_template.json" ]] && continue
   echo "=== $(basename $f) ==="
   cat "$f"
@@ -34,7 +34,7 @@ done
 
 ### 3. Check the backlog
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT project, status, COUNT(*) as c FROM articles WHERE status IN ('todo','writing','backlog') GROUP BY project, status"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT project, status, COUNT(*) as c FROM articles WHERE status IN ('todo','writing','backlog') GROUP BY project, status"
 ```
 
 **STOP RULE:** If a project has 5+ articles in todo/writing/backlog, do NOT add new topics for that project. Wait until backlog drains.
@@ -43,22 +43,22 @@ node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT pr
 
 **From 🦦 Oti (daily intel):**
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT project, date, top_signal, stories, article_ideas, data_points FROM daily_intel WHERE date >= date('now', '-2 days') ORDER BY date DESC"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT project, date, top_signal, stories, article_ideas, data_points FROM daily_intel WHERE date >= date('now', '-2 days') ORDER BY date DESC"
 ```
 
 **From 🐱 Mači (market intel):**
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT id, project, topic, suggested_keywords, relevance_score, demand_score, competition_score, timeliness_score, reasoning, source_urls FROM topic_suggestions WHERE status = 'new' ORDER BY (relevance_score + demand_score + competition_score + timeliness_score) DESC"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT id, project, topic, suggested_keywords, relevance_score, demand_score, competition_score, timeliness_score, reasoning, source_urls FROM topic_suggestions WHERE status = 'new' ORDER BY (relevance_score + demand_score + competition_score + timeliness_score) DESC"
 ```
 
 **From 🐺 Vuk (weekly strategy, if available):**
 ```bash
-ls /home/clawdbot/clawd/intel/strategy/ 2>/dev/null && for f in /home/clawdbot/clawd/intel/strategy/*-week-*.md; do echo "=== $(basename $f) ==="; tail -50 "$f"; done
+ls $HOME/clawd-saas-core/intel/strategy/ 2>/dev/null && for f in $HOME/clawd-saas-core/intel/strategy/*-week-*.md; do echo "=== $(basename $f) ==="; tail -50 "$f"; done
 ```
 
 **From 🐺 Vuk (applied strategy decisions — MUST READ):**
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT project, decision_type, target, reason FROM strategy_decisions WHERE status = 'applied' AND applied_at > datetime('now', '-7 days') ORDER BY applied_at DESC"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT project, decision_type, target, reason FROM strategy_decisions WHERE status = 'applied' AND applied_at > datetime('now', '-7 days') ORDER BY applied_at DESC"
 ```
 ⚠️ **These are approved decisions. Follow them:**
 - `kill_pillar` → do NOT create articles on that topic/pillar
@@ -70,7 +70,7 @@ node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT pr
 
 **Already published (avoid repeats):**
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT project, title, slug, primary_keyword FROM articles WHERE status NOT IN ('failed') ORDER BY created_at DESC LIMIT 50"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT project, title, slug, primary_keyword FROM articles WHERE status NOT IN ('failed') ORDER BY created_at DESC LIMIT 50"
 ```
 
 ### 5. Think (the fox's edge)
@@ -127,7 +127,7 @@ Three animals, three search strategies. You're the sharpest because you hunt wit
 For each topic you pick, insert a complete brief:
 
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js run "INSERT INTO articles (project, title, slug, primary_keyword, search_intent, angle, why_now, outline, source_intel, market_context, status) VALUES ('<PROJECT>', '<TITLE>', '<SLUG>', '<KEYWORD>', '<INTENT>', '<ANGLE>', '<WHY_NOW>', '<OUTLINE>', '<SOURCE_INTEL>', '<MARKET_CONTEXT>', 'todo')"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js run "INSERT INTO articles (project, title, slug, primary_keyword, search_intent, angle, why_now, outline, source_intel, market_context, status) VALUES ('<PROJECT>', '<TITLE>', '<SLUG>', '<KEYWORD>', '<INTENT>', '<ANGLE>', '<WHY_NOW>', '<OUTLINE>', '<SOURCE_INTEL>', '<MARKET_CONTEXT>', 'todo')"
 ```
 
 **Brief fields:**
@@ -144,13 +144,13 @@ node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js run "INSERT INTO
 
 **Also write the structured brief to the `brief` JSON field:**
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js run "UPDATE articles SET brief = json('{\"angle\": \"<ANGLE>\", \"why_now\": \"<WHY_NOW>\", \"keyword\": \"<KEYWORD>\", \"search_intent\": \"<INTENT>\", \"sources\": {\"oti\": \"<OTI_INTEL_SUMMARY>\", \"maci\": \"<MACI_SUGGESTION_SUMMARY>\"}, \"outline_summary\": \"<KEY_SECTIONS>\"}'  ) WHERE id = <ARTICLE_ID>"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js run "UPDATE articles SET brief = json('{\"angle\": \"<ANGLE>\", \"why_now\": \"<WHY_NOW>\", \"keyword\": \"<KEYWORD>\", \"search_intent\": \"<INTENT>\", \"sources\": {\"oti\": \"<OTI_INTEL_SUMMARY>\", \"maci\": \"<MACI_SUGGESTION_SUMMARY>\"}, \"outline_summary\": \"<KEY_SECTIONS>\"}'  ) WHERE id = <ARTICLE_ID>"
 ```
 This brief JSON is the structured handoff to Pino. It's also what Vuk reads when evaluating article performance later.
 
 **If you used a Mači suggestion, mark it:**
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js run "UPDATE topic_suggestions SET status = 'used', used_by_article_id = <ARTICLE_ID> WHERE id = <SUGGESTION_ID>"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js run "UPDATE topic_suggestions SET status = 'used', used_by_article_id = <ARTICLE_ID> WHERE id = <SUGGESTION_ID>"
 ```
 
 ### 7. Output summary
@@ -199,7 +199,7 @@ You see all projects at once. A trend in tech might inspire a silver article ang
 ### Update Memory
 After running:
 ```bash
-/home/clawdbot/clawd/content-pipeline/agents/liso-memory.md
+/home/clawdbot/clawd-saas-core/agents/liso-memory.md
 ```
 Track: which picks worked (got published), which got rejected, patterns in what Sebastjan approves, cross-pollination wins, surgical searches that uncovered gold.
 

@@ -28,12 +28,12 @@ Once a week. One run, all projects. You read the project config and adapt. New p
 
 ### 1. Read your memory
 ```bash
-cat /home/clawdbot/clawd/content-pipeline/agents/maci-memory.md
+cat /home/clawdbot/clawd-saas-core/agents/maci-memory.md
 ```
 
 ### 2. Load all projects
 ```bash
-for f in /home/clawdbot/clawd/content-pipeline/projects/*.json; do
+for f in /home/clawdbot/clawd-saas-core/projects/*.json; do
   [[ "$(basename $f)" == "_template.json" ]] && continue
   echo "=== $(basename $f) ==="
   cat "$f"
@@ -42,7 +42,7 @@ done
 
 ### 3. Load what we've published
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT project, title, slug, primary_keyword, status, published_url FROM articles WHERE status IN ('published','promoted') ORDER BY project, published_at DESC"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT project, title, slug, primary_keyword, status, published_url FROM articles WHERE status IN ('published','promoted') ORDER BY project, published_at DESC"
 ```
 
 ### 4. For EACH project, run the hunt:
@@ -69,7 +69,7 @@ From each result page, extract:
 
 Store SERP findings:
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js run "INSERT OR REPLACE INTO serp_tracking (project, keyword, our_position, our_url, top_competitors, people_also_ask, checked_at) VALUES ('<PROJECT>', '<KEYWORD>', <POS>, '<URL>', '<COMPETITORS_JSON>', '<PAA_JSON>', datetime('now'))"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js run "INSERT OR REPLACE INTO serp_tracking (project, keyword, our_position, our_url, top_competitors, people_also_ask, checked_at) VALUES ('<PROJECT>', '<KEYWORD>', <POS>, '<URL>', '<COMPETITORS_JSON>', '<PAA_JSON>', datetime('now'))"
 ```
 
 ### Phase 2 — Competitor Discovery
@@ -78,14 +78,14 @@ From SERP results, identify the domains that consistently outrank us. These are 
 
 For each new competitor domain:
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js run "INSERT OR IGNORE INTO project_competitors (project, domain, name, discovered_via, last_scanned) VALUES ('<PROJECT>', '<DOMAIN>', '<NAME>', 'serp', datetime('now'))"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js run "INSERT OR IGNORE INTO project_competitors (project, domain, name, discovered_via, last_scanned) VALUES ('<PROJECT>', '<DOMAIN>', '<NAME>', 'serp', datetime('now'))"
 ```
 
 For known competitors (in DB), check what's new:
 - `web_search`: `site:{competitor_domain}` (last 7 days)
 - Log new articles found:
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js run "INSERT OR IGNORE INTO competitor_content (project, competitor_domain, title, url, discovered_at) VALUES ('<PROJECT>', '<DOMAIN>', '<TITLE>', '<URL>', datetime('now'))"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js run "INSERT OR IGNORE INTO competitor_content (project, competitor_domain, title, url, discovered_at) VALUES ('<PROJECT>', '<DOMAIN>', '<TITLE>', '<URL>', datetime('now'))"
 ```
 
 ### Phase 3 — Audience Demand Mining
@@ -123,7 +123,7 @@ Only suggest topics with gap score ≥ 5.
 
 For each suggestion:
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js run "INSERT INTO topic_suggestions (project, topic, suggested_keywords, source_urls, relevance_score, demand_score, competition_score, timeliness_score, reasoning, status) VALUES ('<PROJECT>', '<TOPIC>', '<KEYWORDS>', '<SOURCE_URLS>', <REL>, <DEM>, <COMP>, <TIME>, '<REASONING>', 'new')"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js run "INSERT INTO topic_suggestions (project, topic, suggested_keywords, source_urls, relevance_score, demand_score, competition_score, timeliness_score, reasoning, status) VALUES ('<PROJECT>', '<TOPIC>', '<KEYWORDS>', '<SOURCE_URLS>', <REL>, <DEM>, <COMP>, <TIME>, '<REASONING>', 'new')"
 ```
 
 **Max 5 suggestions per project.** Only the best prey.
@@ -173,7 +173,7 @@ Brave free tier: ~2000/month. Max 10 searches per project, max 30 total per run.
 ### Track Your Kills
 After running, update your memory:
 ```bash
-/home/clawdbot/clawd/content-pipeline/agents/maci-memory.md
+/home/clawdbot/clawd-saas-core/agents/maci-memory.md
 ```
 
 Track:

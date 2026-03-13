@@ -45,7 +45,10 @@ export const COLUMN_LABELS: Record<ArticleStatus, string> = {
 };
 
 export const PROJECT_COLORS: Record<string, string> = {
-  'easyai-start': '#0066FF', // Brand Blue
+  nakupsrebra: '#C0C0C0',
+  'baseman-blog': '#3b8bbc',
+  'avant2go-subscribe': '#22c55e',
+  'lightingdesign-studio': '#c9a227', // Muted gold
 };
 
 export const AGENT_META: Record<string, { emoji: string; role: string; desc: string; type: 'pipeline' | 'freelancer' | 'system'; group?: string }> = {
@@ -60,6 +63,7 @@ export const AGENT_META: Record<string, { emoji: string; role: string; desc: str
   bea:    { emoji: '🐝', role: 'Social',        desc: '"How do we spread this?" — generates social posts from published articles', type: 'pipeline', group: 'distribution' },
   bordi:  { emoji: '🐕', role: 'Social Publisher', desc: '"Time to herd!" — publishes approved social posts to X, LinkedIn, FB, IG, TikTok', type: 'pipeline', group: 'distribution' },
   medo:   { emoji: '🐻', role: 'Watchdog',       desc: '"Is everything OK?" — monitors router health, detects stuck articles, fixes problems', type: 'pipeline', group: 'ops' },
+  bazo:   { emoji: '🦡', role: 'Housekeeper',    desc: '"Are the tunnels clean?" — infrastructure audits, log hygiene, system optimization', type: 'pipeline', group: 'ops' },
   kroki:  { emoji: '🐦‍⬛', role: 'Analytics',     desc: '"What are the numbers?" — weekly pipeline report and trends', type: 'pipeline', group: 'ops' },
   vuk:    { emoji: '🐺', role: 'Strategist',    desc: '"What works, what doesn\'t?" — weekly strategy, kills weak topics', type: 'pipeline', group: 'strategy' },
 

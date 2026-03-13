@@ -49,6 +49,8 @@ export const ArticleSchema = z.object({
   priority: z.enum(['normal', 'high', 'now']).nullable().optional(),
   abstract: z.string().nullable().optional(),
   revision_count: z.number().nullable().optional(),
+  type: z.string().nullable().optional(),
+  html: z.string().nullable().optional(),
 });
 
 export const AgentRunSchema = z.object({
@@ -98,4 +100,5 @@ export const SystemHealthSchema = z.object({
   diskUsedGb: z.number(),
   diskTotalGb: z.number(),
   uptimeHours: z.number(),
+  gatewayUptimeHours: z.number().optional(),
 });

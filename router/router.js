@@ -19,9 +19,18 @@
 
 import http from 'node:http';
 import Database from 'better-sqlite3';
-import { readFileSync, appendFileSync, mkdirSync, existsSync, writeFileSync, readdirSync, unlinkSync } from 'node:fs';
+import { readFileSync, appendFileSync, mkdirSync, existsSync, writeFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
+let runHobi;
+try {
+  const mod = await import('./src/agents/hobi.js');
+  runHobi = mod.run;
+} catch (e) {
+  console.log('[Router] Optional module hobi.js not found, skipping.');
+}
+
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -43,38 +52,53 @@ process.on('unhandledRejection', (reason) => {
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const PORT = parseInt(process.env.PIPELINE_ROUTER_PORT || '4001', 10);
-const DB_PATH = process.env.PIPELINE_DB || `${process.env.HOME}/clawd-saas-core/db/pipeline.db`;
+const DB_PATH = process.env.PIPELINE_DB || path.join(process.env.HOME, 'clawd-saas-core/db/pipeline.db');
 const HOOKS_URL = process.env.HOOKS_URL || 'http://127.0.0.1:18789/hooks/agent';
-const HOOKS_TOKEN = process.env.HOOKS_TOKEN || 'f03286cbf278e084e597e42eb18346f1c14aa02f2e4aa2dc58809a58809a9edc';
+const HOOKS_TOKEN = process.env.HOOKS_TOKEN || '';
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || '';
 const COOLDOWN_MS = parseInt(process.env.COOLDOWN_MS || '300000', 10); // 5 min
+const MAX_GLOBAL_CONCURRENT = parseInt(process.env.MAX_GLOBAL_CONCURRENT || '3', 10);
+const DEFAULT_MAX_CONCURRENT = parseInt(process.env.DEFAULT_MAX_CONCURRENT || '1', 10);
 const LOG_DIR = process.env.LOG_DIR || join(__dirname, 'logs');
-const PROJECTS_DIR = process.env.PROJECTS_DIR || `${process.env.HOME}/clawd-saas-core/projects`;
+const PROJECTS_DIR = process.env.PROJECTS_DIR || path.join(process.env.HOME, 'clawd-saas-core/projects');
 const STATE_FILE = join(__dirname, 'router-state.json');
-const SESSIONS_FILE = process.env.SESSIONS_FILE || `${process.env.HOME}/.openclaw/agents/main/sessions/sessions.json`;
+const SESSIONS_FILES = [
+  process.env.SESSIONS_FILE || path.join(process.env.OPENCLAW_AGENTS_DIR || path.join(process.env.HOME, '.openclaw/agents'), 'main/sessions/sessions.json'),
+  path.join(process.env.OPENCLAW_AGENTS_DIR || path.join(process.env.HOME, '.openclaw/agents'), 'factory/sessions/sessions.json'),
+  path.join(process.env.OPENCLAW_AGENTS_DIR || path.join(process.env.HOME, '.openclaw/agents'), 'alpha/sessions/sessions.json'),
+];
+// Keep legacy constant for backward compat
+const SESSIONS_FILE = SESSIONS_FILES[0];
 
 // ─── Session Token Reader ─────────────────────────────────────────────────────
 
 /**
  * Read token usage from OpenClaw session data (single attempt, no retry).
+ * Checks all agent session files (main, factory, alpha) since V2 routes
+ * pipeline spawns to the factory agent.
  * Returns { tokensIn, tokensOut, model } or null if not yet available.
  */
 function readSessionUsage(sessionKey) {
-  try {
-    const raw = readFileSync(SESSIONS_FILE, 'utf-8');
-    const sessions = JSON.parse(raw);
-    const session = sessions[`agent:main:${sessionKey}`];
-    if (!session || (!session.totalTokens && !session.outputTokens)) return null;
-
-    const outputTokens = session.outputTokens || 0;
-    const totalTokens = session.totalTokens || 0;
-    const inputTokens = totalTokens > outputTokens ? totalTokens - outputTokens : 0;
-
-    return { tokensIn: inputTokens, tokensOut: outputTokens, model: session.model || null };
-  } catch (err) {
-    log('WARN', `readSessionUsage(${sessionKey}): ${err.message}`);
-    return null;
+  const agentPrefixes = ['agent:main:', 'agent:factory:', 'agent:alpha:'];
+  for (const sessFile of SESSIONS_FILES) {
+    try {
+      const raw = readFileSync(sessFile, 'utf-8');
+      const sessions = JSON.parse(raw);
+      for (const prefix of agentPrefixes) {
+        const session = sessions[`${prefix}${sessionKey}`];
+        if (session && (session.totalTokens || session.outputTokens)) {
+          const outputTokens = session.outputTokens || 0;
+          const totalTokens = session.totalTokens || 0;
+          const inputTokens = totalTokens > outputTokens ? totalTokens - outputTokens : 0;
+          return { tokensIn: inputTokens, tokensOut: outputTokens, model: session.model || null };
+        }
+      }
+    } catch (err) {
+      // File might not exist for some agents, skip silently
+    }
   }
+  log('WARN', `readSessionUsage(${sessionKey}): not found in any agent session file`);
+  return null;
 }
 
 /**
@@ -88,8 +112,8 @@ function backfillTokens() {
       SELECT id, session_key FROM agent_runs
       WHERE session_key IS NOT NULL
         AND tokens_in IS NULL
-        AND started_at > datetime('now', '-1 hour')
-      ORDER BY id DESC LIMIT 20
+        AND started_at > datetime('now', '-5 days')
+      ORDER BY id DESC LIMIT 50
     `).all();
 
     if (pending.length === 0) return;
@@ -123,11 +147,32 @@ function loadProjectConfig(project) {
 }
 
 function isGeneratingPaused(project) {
-  return !!loadProjectConfig(project).generating_paused;
+  // Single source of truth: SQLite
+  try {
+    const row = getDb().prepare('SELECT generating_paused FROM project_settings WHERE project = ?').get(project);
+    return !!row?.generating_paused;
+  } catch { return false; }
 }
 
 function isPublishingPaused(project) {
-  return !!loadProjectConfig(project).publishing_paused;
+  // Single source of truth: SQLite
+  try {
+    const row = getDb().prepare('SELECT publishing_paused FROM project_settings WHERE project = ?').get(project);
+    return !!row?.publishing_paused;
+  } catch { return false; }
+}
+
+function shouldSkipAgent(project, agent) {
+  // Auto-skip Prevo if no translation configured for this project
+  if (agent === 'prevo') {
+    try {
+      const row = getDb().prepare('SELECT translate_to FROM project_settings WHERE project = ?').get(project);
+      if (!row?.translate_to) return true; // No translation targets = skip Prevo
+    } catch { return true; }
+  }
+
+  const cfg = loadProjectConfig(project);
+  return Array.isArray(cfg.skip_agents) && cfg.skip_agents.includes(agent);
 }
 
 function isDoneForToday(project) {
@@ -221,25 +266,15 @@ function loadProjects() {
     ];
   }
 }
-
-let PROJECTS = loadProjects();
+const PROJECTS = loadProjects();
 // Keep backward compat: places that use PROJECTS as string[] get slugs
-let PROJECT_SLUGS = PROJECTS.map(p => typeof p === 'string' ? p : p.slug);
-
-function refreshProjectsState() {
-  PROJECTS = loadProjects();
-  PROJECT_SLUGS = PROJECTS.map(p => typeof p === 'string' ? p : p.slug);
-  log('INFO', `♻️ State Refreshed. Active projects: ${PROJECT_SLUGS.length}`);
-}
+const PROJECT_SLUGS = PROJECTS.map(p => typeof p === 'string' ? p : p.slug);
 
 const OTI_JOBS = {
   'cf5262ea-bee8-498d-b615-c44d65488b3f': 'nakupsrebra',
   '119b883b-4844-48b9-b954-4f7edd98a66b': 'baseman-blog',
   '4fdb8605-2ff2-49c8-a300-8840c9e066fc': 'avant2go-subscribe',
 };
-
-// Track completions per agent run (keyed by date or runId)
-const otiCompletions = { date: '', completed: new Set() };
 
 // ─── Pipeline Chain ───────────────────────────────────────────────────────────
 // agent:project → { checkStatus, nextAgent }
@@ -253,8 +288,10 @@ const PIPELINE_CHAIN = {
   'pino': { checkStatus: 'review', nextAgent: 'rada' },
   // Rada finishes → check for 'ready_for_design' articles → spawn Zala
   'rada': { checkStatus: 'ready_for_design', nextAgent: 'zala' },
-  // Zala finishes → check for 'ready' articles → spawn Lana
-  'zala': { checkStatus: 'ready', nextAgent: 'lana' },
+  // Zala finishes → check for 'ready' articles → spawn Prevo (if translation enabled) or Lana
+  'zala': { checkStatus: 'ready', nextAgent: 'prevo' },
+  // Prevo finishes → check for 'ready' articles → spawn Lana
+  'prevo': { checkStatus: 'ready', nextAgent: 'lana' },
   // Lana finishes → check for published articles → spawn Bea
   'lana': { checkStatus: 'published', nextAgent: 'bea' },
   // Bea finishes → terminal
@@ -333,7 +370,7 @@ const WIP_LIMITS = {
 };
 
 function isWipBlocked(agent, project) {
-  if (agent === 'lana' || agent === 'liso' || agent === 'bea') return false;
+  if (agent === 'lana' || agent === 'bea') return false;
   const d = getDb();
   const downstreamStatuses = {
     pino: ['review', 'ready_for_design', 'ready', 'awaiting_approval'],
@@ -351,19 +388,7 @@ function isWipBlocked(agent, project) {
 }
 
 // Liso STOP RULE: don't create briefs if too many in-progress
-function isLisoBlocked() {
-  const d = getDb();
-  for (const project of PROJECT_SLUGS) {
-    const row = d.prepare(
-      "SELECT COUNT(*) as c FROM articles WHERE project = ? AND status IN ('todo','writing','review','ready_for_design','ready')"
-    ).get(project);
-    if (row.c > 5) {
-      log('INFO', `Liso STOP: ${project} has ${row.c} in-progress articles (>5)`);
-      return true;
-    }
-  }
-  return false;
-}
+// isLisoBlocked removed — replaced by per-project backlog check in Oti handler
 
 /**
  * Create an article brief for human-requested topics.
@@ -405,7 +430,7 @@ function writeArticleEvent(articleId, project, eventType, opts = {}) {
 function writeArticleEventsForAgent(agentKey, eventType, opts = {}) {
   // Write events for all articles the agent is working on
   const [agent, proj] = agentKey.split(':');
-  const statusMap = { pino: 'todo', rada: 'review', zala: 'ready_for_design', lana: 'ready', liso: 'backlog', bea: 'published' };
+  const statusMap = { pino: 'todo', rada: 'review', zala: 'ready_for_design', prevo: 'ready', lana: 'ready', liso: 'backlog', bea: 'published' };
   const checkStatus = statusMap[agent];
   if (!checkStatus) return;
 
@@ -467,8 +492,13 @@ async function spawnAgent(agentKey) {
     return { ok: false, error: `No prompt found for ${agentKey}` };
   }
 
-  // Inject project-specific design system for Zala
+  // Inject {{PROJECT_SLUG}} for any template-based prompt (Liso, Zala, etc.)
   let message = prompt.message;
+  if (projectSlug && projectSlug !== '_template' && projectSlug !== 'all') {
+    message = message.replaceAll('{{PROJECT_SLUG}}', projectSlug);
+  }
+
+  // Inject project-specific design system for Zala
   if (agentName === 'zala' && projectSlug && projectSlug !== '_template') {
     try {
       const projects = loadProjects();
@@ -497,6 +527,7 @@ async function spawnAgent(agentKey) {
 
   const body = JSON.stringify({
     message,
+    agentId: 'factory',  // V2: Route to factory agent (isolated workspace + tool allowlist)
     deliver: true,  // announce completion back
     model: prompt.model || 'sonnet',
     allowUnsafeExternalContent: true,  // trusted: Router is localhost, we control prompts
@@ -532,7 +563,7 @@ async function spawnAgent(agentKey) {
  * Count articles in the agent's input status (for completion detection baseline).
  */
 function countInitialArticles(agentKey) {
-  const statusForAgent = { liso: 'backlog', pino: 'todo', rada: 'review', zala: 'ready_for_design', lana: 'ready', bea: 'published' };
+  const statusForAgent = { liso: 'backlog', pino: 'todo', rada: 'review', zala: 'ready_for_design', prevo: 'ready', lana: 'ready', bea: 'published' };
   const [agent, proj] = agentKey.split(':');
   const inputStatus = statusForAgent[agent];
   if (!inputStatus) return 0;
@@ -541,14 +572,82 @@ function countInitialArticles(agentKey) {
     const projects = proj === 'all' ? PROJECT_SLUGS : [proj];
     let count = 0;
     for (const p of projects) {
-      const row = d.prepare('SELECT COUNT(*) as c FROM articles WHERE status = ? AND project = ?').get(inputStatus, p);
-      count += row.c;
+      if (agent === 'bea') { const row = d.prepare("SELECT COUNT(*) as c FROM articles a WHERE a.status = ? AND a.project = ? AND a.id NOT IN (SELECT DISTINCT article_id FROM social_posts)").get(inputStatus, p); count += row.c; } else { const row = d.prepare('SELECT COUNT(*) as c FROM articles WHERE status = ? AND project = ?').get(inputStatus, p); count += row.c; }
     }
     return count;
   } catch { return 0; }
 }
 
+// ─── Concurrency Limits ───────────────────────────────────────────────────────
+
+function getConcurrencyLimit(project) {
+  if (!project || project === 'all') return MAX_GLOBAL_CONCURRENT;
+  try {
+    const row = getDb().prepare('SELECT max_concurrent FROM project_settings WHERE project = ?').get(project);
+    return row?.max_concurrent ?? DEFAULT_MAX_CONCURRENT;
+  } catch { return DEFAULT_MAX_CONCURRENT; }
+}
+
+function countActiveRunsForProject(project) {
+  if (!project || project === 'all') return _activeRuns.size;
+  let count = 0;
+  for (const [key] of _activeRuns) {
+    if (key.endsWith(`:${project}`)) count++;
+  }
+  return count;
+}
+
+function checkConcurrencyLimits(agentKey) {
+  const [, project] = agentKey.split(':');
+
+  // Global limit
+  if (_activeRuns.size >= MAX_GLOBAL_CONCURRENT) {
+    return { allowed: false, reason: `Global limit reached (${_activeRuns.size}/${MAX_GLOBAL_CONCURRENT})` };
+  }
+
+  // Per-project limit
+  if (project && project !== 'all') {
+    const limit = getConcurrencyLimit(project);
+    const running = countActiveRunsForProject(project);
+    if (running >= limit) {
+      return { allowed: false, reason: `Project limit reached for ${project} (${running}/${limit})` };
+    }
+  }
+
+  return { allowed: true };
+}
+
+function isTransientError(errorMsg) {
+  if (!errorMsg) return false;
+  const transient = ['draining', 'restart', 'ECONNREFUSED', 'ECONNRESET', 'timeout', 'socket hang up', '503', '502'];
+  return transient.some(t => errorMsg.toLowerCase().includes(t.toLowerCase()));
+}
+
+/**
+ * Sanitize error messages for customer-facing API responses.
+ * Internal details stay in logs, customers get friendly text.
+ */
+function sanitizeError(err) {
+  const msg = typeof err === 'string' ? err : err?.message || '';
+  // Log the real error internally
+  log('ERROR', `API error (sanitized for customer): ${msg}`);
+  // Return friendly message
+  if (isTransientError(msg)) return 'The system is temporarily busy. Please try again in a moment.';
+  if (msg.includes('SQLITE') || msg.includes('database')) return 'A temporary data issue occurred. Please try again.';
+  if (msg.includes('JSON') || msg.includes('parse')) return 'Invalid request format. Please check your input.';
+  if (msg.includes('not found') || msg.includes('No prompt')) return 'The requested resource was not found.';
+  return 'Something went wrong. Please try again or contact support.';
+}
+
 async function spawnAgentWithRetry(agentKey, context) {
+  // Concurrency gate
+  const concCheck = checkConcurrencyLimits(agentKey);
+  if (!concCheck.allowed) {
+    log('INFO', `⏳ Concurrency limit: ${agentKey} — ${concCheck.reason}`);
+    logAudit({ ...context, action: 'concurrency_limited', reason: concCheck.reason });
+    return { ok: false, error: concCheck.reason, concurrencyLimited: true };
+  }
+
   const result = await spawnAgent(agentKey);
   if (result.ok) {
     log('INFO', `✅ Spawned ${agentKey} (runId: ${result.runId})`);
@@ -563,37 +662,45 @@ async function spawnAgentWithRetry(agentKey, context) {
     return result;
   }
 
-  log('WARN', `❌ Failed to spawn ${agentKey}: ${result.error}. Retrying in 5s...`);
-  
-  // Retry once after 5s
-  await new Promise(r => setTimeout(r, 5000));
-  const retry = await spawnAgent(agentKey);
-  if (retry.ok) {
-    log('INFO', `✅ Retry succeeded: ${agentKey} (runId: ${retry.runId})`);
-    logAudit({ ...context, action: 'retry_spawned', reason: `runId=${retry.runId}` });
-    activeRuns.set(agentKey, {
-      runId: retry.runId, sessionKey: retry.sessionKey,
-      startedAt: Date.now(), initialRemaining: countInitialArticles(agentKey),
-    });
-    return retry;
-  }
+  // Transient errors (gateway drain, restart, connection issues): retry up to 3 times with backoff
+  const maxRetries = isTransientError(result.error) ? 3 : 1;
+  const baseDelay = isTransientError(result.error) ? 10000 : 5000; // 10s for drain, 5s for others
 
-  log('ERROR', `❌ Retry failed: ${agentKey}: ${retry.error}`);
-  logAudit({ ...context, action: 'spawn_failed', reason: retry.error });
-  return retry;
+  log('WARN', `❌ Failed to spawn ${agentKey}: ${result.error}. ${isTransientError(result.error) ? 'Transient error, retrying with backoff...' : 'Retrying in 5s...'}`);
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const delay = baseDelay * attempt; // 10s, 20s, 30s for transient; 5s for others
+    await new Promise(r => setTimeout(r, delay));
+    
+    const retry = await spawnAgent(agentKey);
+    if (retry.ok) {
+      log('INFO', `✅ Retry ${attempt}/${maxRetries} succeeded: ${agentKey} (runId: ${retry.runId})`);
+      logAudit({ ...context, action: 'retry_spawned', reason: `runId=${retry.runId} (attempt ${attempt + 1})` });
+      activeRuns.set(agentKey, {
+        runId: retry.runId, sessionKey: retry.sessionKey,
+        startedAt: Date.now(), initialRemaining: countInitialArticles(agentKey),
+      });
+      return retry;
+    }
+
+    log('WARN', `❌ Retry ${attempt}/${maxRetries} failed: ${agentKey}: ${retry.error}`);
+    
+    if (attempt === maxRetries) {
+      // Only alert on non-transient errors or if all retries exhausted
+      log('ERROR', `❌ All retries failed: ${agentKey}: ${retry.error}`);
+      logAudit({ ...context, action: 'spawn_failed', reason: retry.error });
+      // Don't alarm customers with transient gateway issues
+      if (!isTransientError(retry.error)) {
+        sendTelegramAlert(`🚨 Agent spawn failed: <b>${agentKey}</b>\n${retry.error}`);
+      } else {
+        log('WARN', `Suppressed alert for transient error: ${agentKey} (gateway likely restarting)`);
+      }
+      return retry;
+    }
+  }
 }
 
 // ─── Core Logic ───────────────────────────────────────────────────────────────
-
-function recordOtiCompletion(project) {
-  const today = new Date().toISOString().slice(0, 10);
-  if (otiCompletions.date !== today) {
-    otiCompletions.date = today;
-    otiCompletions.completed = new Set();
-  }
-  otiCompletions.completed.add(project);
-  return otiCompletions.completed.size >= 3;
-}
 
 /**
  * Handle: a pipeline agent finished. Check DB and spawn next agent.
@@ -613,11 +720,12 @@ async function handleAgentCompletion(sourceAgent, project, sourceJobId) {
   const { checkStatus, nextAgent } = chain;
 
   // For Liso: check all projects (Liso is project-agnostic)
-  const projectsToCheck = sourceAgent === 'liso' ? PROJECT_SLUGS : [project];
+  // For unified agents (lana, bea), check all projects; otherwise check only the source project
+  const projectsToCheck = project === 'all' ? PROJECT_SLUGS : [project];
 
   for (const proj of projectsToCheck) {
     // For agents that are project-agnostic (lana, liso), use the unified key
-    const isUnifiedAgent = nextAgent === 'lana' || nextAgent === 'liso' || nextAgent === 'bea';
+    const isUnifiedAgent = nextAgent === 'lana' || nextAgent === 'bea';
     const cooldownKey = isUnifiedAgent ? `${nextAgent}:all` : `${nextAgent}:${proj}`;
     const agentKey = isUnifiedAgent ? `${nextAgent}:all` : `${nextAgent}:${proj}`;
     const lastTrigger = cooldowns.get(cooldownKey) || 0;
@@ -630,6 +738,13 @@ async function handleAgentCompletion(sourceAgent, project, sourceJobId) {
       result.skipped.push(`${cooldownKey}: cooldown`);
       // For unified agents, skip ALL projects (one cooldown covers all)
       if (isUnifiedAgent) break;
+      continue;
+    }
+
+    // Per-project agent skip (e.g. skip_agents: ["bea", "bordi"])
+    if (shouldSkipAgent(proj, nextAgent)) {
+      log('INFO', `Chain skip ${nextAgent}/${proj}: skip_agents config`);
+      result.skipped.push(`${nextAgent}/${proj}: skip_agents`);
       continue;
     }
 
@@ -679,7 +794,7 @@ async function handleAgentCompletion(sourceAgent, project, sourceJobId) {
         const full = getDb().prepare('SELECT revision_count, feedback FROM articles WHERE id = ?').get(a.id);
         if (full && (full.revision_count || 0) >= MAX_REVISIONS) {
           log('WARN', `Article ${a.id} ("${a.title}") exceeded ${MAX_REVISIONS} revisions → auto-failing`);
-          getDb().prepare("UPDATE articles SET status = 'failed', feedback = feedback || '\n\n[AUTO-FAILED] Exceeded max revision attempts (' || ? || '). Needs human review.', updated_at = datetime('now') WHERE id = ?").run(MAX_REVISIONS, a.id);
+          getDb().prepare("UPDATE articles SET status = 'failed', feedback = feedback || '\n\nThis article needs manual review — the writing agent was unable to produce an approved draft after multiple attempts.', updated_at = datetime('now') WHERE id = ?").run(MAX_REVISIONS, a.id);
           writeArticleEvent(a.id, proj, 'auto_failed', { agent: 'router', reason: `Exceeded ${MAX_REVISIONS} revisions` });
           logAudit({ sourceAgent: 'router', project: proj, action: 'auto_failed', targetAgent: 'pino', articleId: a.id, reason: `revision_count >= ${MAX_REVISIONS}` });
         }
@@ -751,36 +866,51 @@ async function processWebhook(payload) {
     return result;
   }
 
-  // ── Oti fan-in ──
+  // ── Oti → Liso (per-project, no fan-in) ──
   const otiProject = OTI_JOBS[jobId];
   if (otiProject) {
-    const allDone = recordOtiCompletion(otiProject);
-    log('INFO', `Oti/${otiProject} done (${otiCompletions.completed.size}/3)`);
+    log('INFO', `Oti/${otiProject} done → spawning Liso for ${otiProject}`);
     logAudit({
       sourceJobId: jobId, sourceAgent: 'oti', project: otiProject,
-      action: allDone ? 'fan_in_complete' : 'fan_in_waiting',
-      targetAgent: 'liso',
-      reason: `${otiCompletions.completed.size}/3 Otis done`,
+      action: 'oti_complete', targetAgent: 'liso',
+      reason: `Oti/${otiProject} completed, triggering per-project Liso`,
     });
 
-    if (allDone) {
-      if (isLisoBlocked()) {
-        log('INFO', 'All 3 Otis done but Liso STOP RULE active, skipping');
-        result.skipped.push('liso: STOP RULE (>5 in-progress)');
-        return result;
-      }
-      log('INFO', 'All 3 Otis done → spawning Liso');
-      const spawnResult = await spawnAgentWithRetry('liso:all', {
-        sourceJobId: jobId, sourceAgent: 'oti', project: 'all', targetAgent: 'liso',
-      });
-      if (spawnResult.ok) {
-        cooldowns.set('liso:all', Date.now());
-        result.triggered.push('liso/all');
-      } else {
-        result.errors.push(`liso: ${spawnResult.error}`);
-      }
+    // Per-project backlog check (replaces global isLisoBlocked)
+    const d = getDb();
+    const backlog = d.prepare(
+      "SELECT COUNT(*) as c FROM articles WHERE project = ? AND status IN ('todo','writing','review','ready_for_design','ready')"
+    ).get(otiProject);
+    if (backlog && backlog.c > 5) {
+      log('INFO', `Liso skip: ${otiProject} has ${backlog.c} in-progress articles (>5)`);
+      result.skipped.push(`liso/${otiProject}: backlog full (${backlog.c})`);
+      return result;
+    }
+
+    // Check if project is paused
+    if (isGeneratingPaused(otiProject)) {
+      log('INFO', `Liso skip: ${otiProject} generating is paused`);
+      result.skipped.push(`liso/${otiProject}: generating_paused`);
+      return result;
+    }
+
+    const agentKey = `liso:${otiProject}`;
+    const cooldownKey = `liso:${otiProject}`;
+    const lastTrigger = cooldowns.get(cooldownKey) || 0;
+    if (Date.now() - lastTrigger < COOLDOWN_MS) {
+      log('INFO', `Liso cooldown for ${otiProject}`);
+      result.skipped.push(`liso/${otiProject}: cooldown`);
+      return result;
+    }
+
+    const spawnResult = await spawnAgentWithRetry(agentKey, {
+      sourceJobId: jobId, sourceAgent: 'oti', project: otiProject, targetAgent: 'liso',
+    });
+    if (spawnResult.ok) {
+      cooldowns.set(cooldownKey, Date.now());
+      result.triggered.push(`liso/${otiProject}`);
     } else {
-      result.skipped.push(`liso: waiting (${otiCompletions.completed.size}/3)`);
+      result.errors.push(`liso/${otiProject}: ${spawnResult.error}`);
     }
     return result;
   }
@@ -857,7 +987,8 @@ const AGENT_MAX_DURATION_MS = {
   pino: 15 * 60 * 1000,
   rada: 10 * 60 * 1000,
   zala: 10 * 60 * 1000,
-  lana: 5 * 60 * 1000,
+  prevo: 10 * 60 * 1000,
+  lana: 20 * 60 * 1000,
   bea: 10 * 60 * 1000,
   bordi: 5 * 60 * 1000,
 };
@@ -868,7 +999,7 @@ const AGENT_MAX_DURATION_MS = {
  * Timeout = agent exceeded max duration and articles are unmoved.
  */
 function detectCompletions() {
-  const statusForAgent = { liso: 'backlog', pino: 'todo', rada: 'review', zala: 'ready_for_design', lana: 'ready', bea: 'published' };
+  const statusForAgent = { liso: 'backlog', pino: 'todo', rada: 'review', zala: 'ready_for_design', prevo: 'ready', lana: 'ready', bea: 'published' };
   const d = getDb();
 
   for (const [agentKey, run] of [..._activeRuns.entries()]) {
@@ -885,11 +1016,11 @@ function detectCompletions() {
       // Skip paused projects — their articles won't move, shouldn't block detection
       const settings = d.prepare('SELECT paused FROM project_settings WHERE project = ?').get(p);
       if (settings?.paused) continue;
+      if (shouldSkipAgent(p, agent)) continue;
       if (isGeneratingPaused(p) && agent !== 'lana' && agent !== 'bea') continue;
       if (isPublishingPaused(p) && (agent === 'lana' || agent === 'bea')) continue;
 
-      const count = d.prepare('SELECT COUNT(*) as c FROM articles WHERE status = ? AND project = ?').get(inputStatus, p);
-      remaining += count.c;
+      if (agent === 'bea') { const count = d.prepare("SELECT COUNT(*) as c FROM articles a WHERE a.status = ? AND a.project = ? AND a.id NOT IN (SELECT DISTINCT article_id FROM social_posts)").get(inputStatus, p); remaining += count.c; } else { const count = d.prepare('SELECT COUNT(*) as c FROM articles WHERE status = ? AND project = ?').get(inputStatus, p); remaining += count.c; }
     }
 
     // Also detect completion if articles were updated since the run started
@@ -909,7 +1040,7 @@ function detectCompletions() {
     } else if (elapsed > maxDuration) {
       const mins = Math.round(elapsed / 60000);
       log('WARN', `⏰ Timeout: ${agentKey} after ${mins}min, ${remaining} articles unmoved`);
-      writeAgentRun(agent, proj, run.runId, 'timeout', elapsed, `Timed out after ${mins}min, ${remaining} articles unmoved`, run.sessionKey);
+      writeAgentRun(agent, proj, run.runId, 'timeout', elapsed, `Processing took longer than expected. Will retry automatically.`, run.sessionKey);
       activeRuns.delete(agentKey);
 
       // H3: Reset stuck articles to their input status (undo "writing" etc.)
@@ -949,6 +1080,7 @@ function generateTaskSummary(agent, project, status) {
       pino: 'Draft writing',
       rada: 'Editorial review',
       zala: 'Design & formatting',
+      prevo: 'Translation',
       lana: 'Publishing',
       bea: 'Social posts',
       bordi: 'Social publishing',
@@ -999,7 +1131,7 @@ function writeAgentRun(agent, project, runId, status, durationMs, error, session
     // Write event for affected articles
     const eventType = status === 'ok' ? 'agent_completed' : 'agent_failed';
     const projects = project === 'all' ? PROJECT_SLUGS : [project];
-    const statusForAgent = { liso: 'backlog', pino: 'todo', rada: 'review', zala: 'ready_for_design', lana: 'ready', bea: 'published' };
+    const statusForAgent = { liso: 'backlog', pino: 'todo', rada: 'review', zala: 'ready_for_design', prevo: 'ready', lana: 'ready', bea: 'published' };
     const inputStatus = statusForAgent[agent];
     // For completed: articles already moved, so we look one status ahead
     // For failed/timeout: articles are still in inputStatus
@@ -1022,8 +1154,8 @@ function writeAgentRun(agent, project, runId, status, durationMs, error, session
 
 // ─── Alerting ─────────────────────────────────────────────────────────────────
 
-const TELEGRAM_BOT_TOKEN = '8589191593:AAEmIPR6pn1L4WeJEZ07bbhYkK6dKBzyOV8';
-const TELEGRAM_CHAT_ID = '260532163';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
 let lastAlertAt = 0;
 
 async function sendTelegramAlert(text) {
@@ -1057,6 +1189,25 @@ async function pollForStuckArticles() {
   detectCompletions();
   backfillTokens();
 
+  // 0.1. Silent pause mode — if ALL projects are paused, skip article polling
+  // Still runs completions/resets above, but doesn't scan for new work or write blocked events
+  try {
+    const allPaused = PROJECT_SLUGS.every(p => {
+      const s = getDb().prepare('SELECT paused FROM project_settings WHERE project = ?').get(p);
+      return s?.paused;
+    });
+    if (allPaused) {
+      // Only log once every 30 minutes to avoid spam
+      if (!pollForStuckArticles._lastSilentLog || Date.now() - pollForStuckArticles._lastSilentLog > 30 * 60 * 1000) {
+        log('INFO', '😴 All projects paused — silent mode (skipping article scan)');
+        pollForStuckArticles._lastSilentLog = Date.now();
+      }
+      return; // Skip all article scanning below
+    }
+  } catch (err) {
+    log('ERROR', `Silent pause check: ${err.message}`);
+  }
+
   // 0.5. Reset stale done_for_today flags (from yesterday)
   try {
     const wdb = getWriteDb();
@@ -1065,7 +1216,6 @@ async function pollForStuckArticles() {
     log('ERROR', `Reset done_for_today: ${err.message}`);
   }
 
-  // 0.6. Auto-approve: move awaiting_approval → ready for projects with auto_approve=1
   try {
     const d = getDb();
     const autoApproveProjects = d.prepare(
@@ -1084,7 +1234,7 @@ async function pollForStuckArticles() {
           for (const a of articles) {
             writeArticleEvent(a.id, project, 'auto_approved', {
               agent: 'router', agentType: 'system',
-              phase: 'awaiting_approval', detail: 'Auto-approved (auto_approve or vacation_mode)',
+              phase: 'awaiting_approval', detail: 'Vacation mode: auto-approved',
             });
           }
         }
@@ -1092,6 +1242,7 @@ async function pollForStuckArticles() {
     }
   } catch (err) {
     log('ERROR', `Auto-approve: ${err.message}`);
+    sendTelegramAlert(`🚨 Auto-approve error: ${err.message}`);
   }
 
   // 0.7. Router-side done_for_today fallback (if Lana crashed before setting flag)
@@ -1113,24 +1264,6 @@ async function pollForStuckArticles() {
   } catch (err) {
     log('ERROR', `Done-for-today fallback: ${err.message}`);
   }
-  // 0.9. Silent pause mode — if ALL projects are paused, skip article polling
-  // Still runs completions/resets above, but does not scan for new work
-  try {
-    const allPaused = PROJECT_SLUGS.every(p => {
-      const s = getDb().prepare('SELECT paused FROM project_settings WHERE project = ?').get(p);
-      return s?.paused;
-    });
-    if (allPaused) {
-      if (!pollForStuckArticles._lastSilentLog || Date.now() - pollForStuckArticles._lastSilentLog > 30 * 60 * 1000) {
-        log('INFO', '😴 All projects paused — silent mode (skipping article scan)');
-        pollForStuckArticles._lastSilentLog = Date.now();
-      }
-      return;
-    }
-  } catch (err) {
-    log('ERROR', `Silent pause check: ${err.message}`);
-  }
-
   // 1. Priority "now" articles — bypass cooldowns, trigger immediately
   const statusToAgent = {
     'todo': 'pino',
@@ -1141,7 +1274,7 @@ async function pollForStuckArticles() {
   };
 
   for (const [status, agent] of Object.entries(statusToAgent)) {
-    const isUnifiedAgent = agent === 'lana' || agent === 'liso' || agent === 'bea';
+    const isUnifiedAgent = agent === 'lana' || agent === 'bea';
 
     for (const project of PROJECT_SLUGS) {
       const d = getDb();
@@ -1150,6 +1283,8 @@ async function pollForStuckArticles() {
       ).all(status, project);
 
       if (urgent.length > 0) {
+        // Per-project agent skip
+        if (shouldSkipAgent(project, agent)) { log('INFO', `Skip NOW ${agent}/${project}: skip_agents`); continue; }
         // Pause checks apply even for priority=now
         if ((agent === 'lana' || agent === 'bea') && isPublishingPaused(project)) { log('INFO', `Skip NOW ${agent}/${project}: publishing_paused`); continue; }
         if (agent === 'lana' && isDoneForToday(project)) { log('INFO', `Skip NOW ${agent}/${project}: done_for_today`); continue; }
@@ -1194,7 +1329,7 @@ async function pollForStuckArticles() {
   };
 
   for (const [status, agent] of Object.entries(statusToAgent)) {
-    const isUnifiedAgent = agent === 'lana' || agent === 'liso' || agent === 'bea';
+    const isUnifiedAgent = agent === 'lana' || agent === 'bea';
     const ageMinutes = STATUS_AGE_MINUTES[status] || 60;
 
     for (const project of PROJECT_SLUGS) {
@@ -1215,6 +1350,9 @@ async function pollForStuckArticles() {
       }
 
       if (ready.length === 0) continue;
+
+      // Per-project agent skip
+      if (shouldSkipAgent(project, agent)) continue;
 
       // Pause checks
       if ((agent === 'lana' || agent === 'bea') && isPublishingPaused(project)) {
@@ -1252,7 +1390,7 @@ async function pollForStuckArticles() {
         if (failedArticles.length > 0) {
           const wdb = getWriteDb();
           for (const fa of failedArticles) {
-            wdb.prepare("UPDATE articles SET status = 'failed', feedback = 'Circuit breaker: 3+ consecutive agent failures', updated_at = datetime('now') WHERE id = ?").run(fa.id);
+            wdb.prepare("UPDATE articles SET status = 'failed', feedback = 'This article encountered repeated processing issues and has been paused for review. Please check the content and retry.', updated_at = datetime('now') WHERE id = ?").run(fa.id);
             writeArticleEvent(fa.id, project, 'circuit_breaker', {
               agent, phase: status, agentType: 'system',
               detail: `Moved to failed after 3+ consecutive failures`,
@@ -1263,6 +1401,29 @@ async function pollForStuckArticles() {
         }
       } catch (err) {
         log('ERROR', `Circuit breaker check: ${err.message}`);
+      }
+
+      // H7: Lifetime retry cap — 10+ total failures ever → permanently failed
+      try {
+        const lifetimeFailed = getDb().prepare(
+          `SELECT a.id FROM articles a WHERE a.status = ? AND a.project = ?
+           AND (SELECT COUNT(*) FROM article_events ae
+                WHERE ae.article_id = a.id AND ae.event_type = 'agent_failed') >= 10`
+        ).all(status, project);
+        if (lifetimeFailed.length > 0) {
+          const wdb = getWriteDb();
+          for (const fa of lifetimeFailed) {
+            wdb.prepare("UPDATE articles SET status = 'failed', feedback = 'Article exceeded lifetime failure limit (10+ total failures). Requires manual review and reset.', updated_at = datetime('now') WHERE id = ?").run(fa.id);
+            writeArticleEvent(fa.id, project, 'circuit_breaker', {
+              agent, phase: status, agentType: 'system',
+              detail: `Moved to failed: lifetime cap exceeded (10+ total failures)`,
+            });
+            log('WARN', `🔌 Lifetime cap: article #${fa.id} permanently failed (10+ total failures)`);
+          }
+          sendTelegramAlert(`🔌 Lifetime cap: ${lifetimeFailed.length} article(s) in ${project} permanently failed after 10+ total failures.`);
+        }
+      } catch (err) {
+        log('ERROR', `Lifetime cap check: ${err.message}`);
       }
 
       const cooldownKey = isUnifiedAgent ? `${agent}:all` : `${agent}:${project}`;
@@ -1286,6 +1447,7 @@ async function pollForStuckArticles() {
       
       const spawnResult = await spawnAgentWithRetry(agentKey, {
         sourceAgent: 'poll', project, targetAgent: agent,
+
         articleIds: ready.map(a => a.id).join(','),
         reason: `In ${status} >${ageMinutes}min`,
       });
@@ -1297,32 +1459,35 @@ async function pollForStuckArticles() {
     }
   }
 
-  // 3. Liso safety net — if Oti webhooks failed, detect fresh intel and spawn Liso
-  // Normally Liso is triggered by Oti fan-in (3/3 webhooks), but if webhooks are
-  // broken, we check if daily_intel has entries from today and Liso hasn't run.
+  // 3. Liso safety net — per-project: if Oti webhook failed, detect fresh intel
   try {
-    const lisoCooldown = cooldowns.get('liso:all') || 0;
-    if (Date.now() - lisoCooldown > 6 * 60 * 60 * 1000) { // Only if Liso hasn't run in 6h
-      const d = getDb();
-      const today = new Date().toISOString().slice(0, 10);
-      const intelCount = d.prepare(
-        "SELECT COUNT(DISTINCT project) as c FROM daily_intel WHERE date(created_at) = ?"
-      ).get(today);
-      if (intelCount && intelCount.c >= 3) {
-        // All 3 Otis wrote intel today but Liso hasn't run
-        const todoCount = d.prepare(
-          "SELECT COUNT(*) as c FROM articles WHERE status = 'todo'"
-        ).get();
-        // Only spawn Liso if we have fewer than 10 todo articles (don't flood)
-        if (todoCount.c < 10) {
-          log('INFO', 'Liso safety net: 3 projects have fresh intel, spawning Liso');
-          const spawnResult = await spawnAgentWithRetry('liso:all', {
-            sourceAgent: 'poll-safety', project: 'all', targetAgent: 'liso',
-            reason: 'Safety net: Oti intel detected, Liso not triggered via webhook',
-          });
-          if (spawnResult.ok) cooldowns.set('liso:all', Date.now());
-        }
-      }
+    const d = getDb();
+    const today = new Date().toISOString().slice(0, 10);
+    for (const project of PROJECT_SLUGS) {
+      if (isGeneratingPaused(project)) continue;
+      const settings = getProjectSettings(project);
+      if (settings.paused) continue;
+      if (shouldSkipAgent(project, 'liso')) continue;
+
+      const lisoCooldown = cooldowns.get(`liso:${project}`) || 0;
+      if (Date.now() - lisoCooldown < 6 * 60 * 60 * 1000) continue; // Liso ran recently
+
+      const hasIntel = d.prepare(
+        "SELECT COUNT(*) as c FROM daily_intel WHERE date(created_at) = ? AND project = ?"
+      ).get(today, project);
+      if (!hasIntel || hasIntel.c === 0) continue;
+
+      const todoCount = d.prepare(
+        "SELECT COUNT(*) as c FROM articles WHERE status IN ('todo','writing') AND project = ?"
+      ).get(project);
+      if (todoCount.c >= 5) continue;
+
+      log('INFO', `Liso safety net: ${project} has fresh intel but Liso hasn't run`);
+      const spawnResult = await spawnAgentWithRetry(`liso:${project}`, {
+        sourceAgent: 'poll-safety', project, targetAgent: 'liso',
+        reason: 'Safety net: Oti intel detected, Liso not triggered via webhook',
+      });
+      if (spawnResult.ok) cooldowns.set(`liso:${project}`, Date.now());
     }
   } catch (err) {
     log('ERROR', `Liso safety net: ${err.message}`);
@@ -1359,80 +1524,25 @@ async function pollForStuckArticles() {
     }
   } catch (err) {
     log('ERROR', `Bordi check: ${err.message}`);
+    sendTelegramAlert(`🚨 Bordi check error: ${err.message}`);
   }
 }
 
 // ─── HTTP Server ──────────────────────────────────────────────────────────────
 
+function getGatewayUptime() {
+  try {
+    // Find gateway PID by process name (works regardless of systemd user session)
+    const pid = execSync("pgrep -f 'openclaw.*gateway' | head -1", { timeout: 2000 }).toString().trim();
+    if (!pid || pid === '0') return 0;
+    const uptime = execSync(`ps -p ${pid} -o etimes=`, { timeout: 1000 }).toString().trim();
+    return parseInt(uptime, 10) || 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
 const server = http.createServer(async (req, res) => {
-  // Create New Project (SaaS Onboarding)
-  if (req.method === 'POST' && req.url === '/pipeline/projects') {
-    let body = '';
-    req.on('data', chunk => { body += chunk.toString(); });
-    req.on('end', () => {
-      try {
-        const config = JSON.parse(body);
-        if (!config.project_id || !config.client_name) {
-          throw new Error('Missing project_id or client_name');
-        }
-
-        // 1. Write Config File
-        if (!existsSync(PROJECTS_DIR)) mkdirSync(PROJECTS_DIR, { recursive: true });
-        const configPath = join(PROJECTS_DIR, `${config.project_id}.json`);
-        writeFileSync(configPath, JSON.stringify(config, null, 2));
-
-        // 2. Insert into DB
-        const wdb = getWriteDb();
-        try {
-          wdb.prepare(`
-            INSERT INTO project_settings (project, daily_limit, vacation_mode, auto_approve, paused, updated_at)
-            VALUES (?, 2, 0, 0, 0, datetime('now'))
-          `).run(config.project_id);
-        } catch (e) { /* ignore if exists */ }
-
-        // 3. Hot Reload (No restart needed)
-        refreshProjectsState();
-
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'ok', msg: 'Project created' }));
-      } catch (err) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'error', error: err.message }));
-      }
-    });
-    return;
-  }
-
-  // Delete Project (SaaS Teardown)
-  if (req.method === 'DELETE' && req.url.startsWith('/pipeline/projects/')) {
-    const projectId = req.url.split('/').pop();
-    if (!projectId || projectId.includes('..')) { // basic safety
-       res.writeHead(400, { 'Content-Type': 'application/json' }); 
-       res.end(JSON.stringify({ error: 'Invalid ID' })); 
-       return;
-    }
-    
-    try {
-      // 1. Delete Config
-      const configPath = join(PROJECTS_DIR, `${projectId}.json`);
-      if (existsSync(configPath)) unlinkSync(configPath);
-      
-      // 2. Delete DB Record
-      const wdb = getWriteDb();
-      wdb.prepare('DELETE FROM project_settings WHERE project = ?').run(projectId);
-      
-      // 3. Hot Reload
-      refreshProjectsState();
-
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ok', msg: 'Project deleted' }));
-    } catch (err) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: err.message }));
-    }
-    return;
-  }
-
   // Health
   if (req.method === 'GET' && req.url === '/pipeline/health') {
     try {
@@ -1446,27 +1556,50 @@ const server = http.createServer(async (req, res) => {
         status: 'ok',
         version: 2,
         uptime: process.uptime(),
+        gateway_uptime: getGatewayUptime(),
         articles: row.c,
         pipeline: Object.fromEntries(statusCounts.map(r => [r.status, r.c])),
         cooldowns: Object.fromEntries(_cooldowns),
         activeRuns: Object.fromEntries(_activeRuns),
-        otiCompletions: { date: otiCompletions.date, count: otiCompletions.completed.size },
+        concurrency: {
+          global: { active: _activeRuns.size, limit: MAX_GLOBAL_CONCURRENT },
+          perProject: Object.fromEntries(PROJECT_SLUGS.map(p => [p, {
+            active: countActiveRunsForProject(p),
+            limit: getConcurrencyLimit(p),
+          }])),
+        },
         paused: Object.fromEntries(PROJECT_SLUGS.map(p => {
-          const cfg = loadProjectConfig(p);
+          const row = d.prepare('SELECT generating_paused, publishing_paused, paused_by, paused_at, publish_mode FROM project_settings WHERE project = ?').get(p) || {};
           return [p, {
-            generating: !!cfg.generating_paused,
-            generating_by: cfg.generating_paused_by || null,
-            generating_at: cfg.generating_paused_at || null,
-            publishing: !!cfg.publishing_paused,
-            publishing_by: cfg.publishing_paused_by || null,
-            publishing_at: cfg.publishing_paused_at || null,
+            generating: !!row.generating_paused,
+            generating_by: row.generating_paused ? (row.paused_by || null) : null,
+            generating_at: row.generating_paused ? (row.paused_at || null) : null,
+            publishing: !!row.publishing_paused,
+            publishing_by: row.publishing_paused ? (row.paused_by || null) : null,
+            publishing_at: row.publishing_paused ? (row.paused_at || null) : null,
+            publish_mode: row.publish_mode || 'auto',
           }];
         })),
         settings: Object.fromEntries(PROJECT_SLUGS.map(p => [p, getProjectSettings(p)])),
+        circuitBreaker: (() => {
+          try {
+            const tripped = d.prepare(
+              "SELECT id, project, title, status, updated_at FROM articles WHERE status = 'failed' AND updated_at > datetime('now', '-7 days') ORDER BY updated_at DESC LIMIT 10"
+            ).all();
+            return { trippedArticles: tripped.length, recent: tripped };
+          } catch { return { trippedArticles: 0, recent: [] }; }
+        })(),
+        lastErrors: (() => {
+          try {
+            return d.prepare(
+              "SELECT agent_name, project, status, error, finished_at FROM agent_runs WHERE status IN ('error','timeout') AND finished_at > datetime('now', '-24 hours') ORDER BY finished_at DESC LIMIT 10"
+            ).all();
+          } catch { return []; }
+        })(),
       }));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'error', error: err.message }));
+      res.end(JSON.stringify({ status: 'error', error: sanitizeError(err) }));
     }
     return;
   }
@@ -1559,7 +1692,7 @@ const server = http.createServer(async (req, res) => {
           continue;
         }
 
-        const isUnified = agent === 'lana' || agent === 'liso' || agent === 'bea';
+        const isUnified = agent === 'lana' || agent === 'bea';
         const agentKey = isUnified ? `${agent}:all` : `${agent}:${a.project}`;
         const activeRun = activeRuns.get(agentKey);
         const lastTrigger = cooldowns.get(isUnified ? `${agent}:all` : `${agent}:${a.project}`) || 0;
@@ -1586,9 +1719,15 @@ const server = http.createServer(async (req, res) => {
 
         // Check failed state from last run
         const lastAgentRun = lastRuns.get(a.id) ?? null;
-        if (lastAgentRun?.status === 'error' && semaphore !== 'running') {
-          semaphore = 'failed';
-          detail = lastAgentRun.error ? lastAgentRun.error.slice(0, 80) : 'Agent failed';
+        if ((lastAgentRun?.status === 'error' || lastAgentRun?.status === 'timeout') && semaphore !== 'running') {
+          // Transient/timeout errors → show as "retrying" not "failed"
+          if (isTransientError(lastAgentRun.error) || lastAgentRun.status === 'timeout') {
+            semaphore = 'queued';
+            detail = 'Retrying automatically...';
+          } else {
+            semaphore = 'failed';
+            detail = 'Needs attention';
+          }
         }
 
         // Blocked diagnostic (use pre-fetched blockers)
@@ -1621,7 +1760,7 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       log('ERROR', `[/pipeline/agents] ${err.message}`);
       res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: err.message }));
+      res.end(JSON.stringify({ error: sanitizeError(err) }));
     }
     return;
   }
@@ -1635,7 +1774,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify(rows));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: err.message }));
+      res.end(JSON.stringify({ error: sanitizeError(err) }));
     }
     return;
   }
@@ -1651,7 +1790,7 @@ const server = http.createServer(async (req, res) => {
           res.end(JSON.stringify({ error: `Invalid project. Valid: ${PROJECT_SLUGS.join(', ')}` }));
           return;
         }
-        const allowed = ['daily_limit', 'vacation_limit', 'vacation_mode', 'auto_approve', 'paused', 'done_for_today', 'publish_mode'];
+        const allowed = ['daily_limit', 'vacation_limit', 'vacation_mode', 'auto_approve', 'paused', 'done_for_today', 'publish_mode', 'generating_paused', 'publishing_paused', 'paused_by', 'paused_at', 'max_concurrent', 'translate_to'];
         const sets = [];
         const vals = [];
         for (const [k, v] of Object.entries(updates)) {
@@ -1683,7 +1822,7 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ ok: true, settings: row }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
+        res.end(JSON.stringify({ error: sanitizeError(err) }));
       }
     });
     return;
@@ -1698,7 +1837,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ recent }));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'error', error: err.message }));
+      res.end(JSON.stringify({ status: 'error', error: sanitizeError(err) }));
     }
     return;
   }
@@ -1710,7 +1849,7 @@ const server = http.createServer(async (req, res) => {
     req.on('end', async () => {
       try {
         const { agent, project } = JSON.parse(body);
-        const agentKey = agent === 'lana' || agent === 'liso' || agent === 'bea' ? `${agent}:all` : `${agent}:${project}`;
+        const agentKey = agent === 'lana' || agent === 'bea' ? `${agent}:all` : `${agent}:${project}`;
         const result = await spawnAgentWithRetry(agentKey, {
           sourceAgent: 'manual', project: project || 'all', targetAgent: agent,
         });
@@ -1718,7 +1857,63 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify(result));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
+        res.end(JSON.stringify({ error: sanitizeError(err) }));
+      }
+    });
+    return;
+  }
+
+  // ─── Manual / Hook Endpoint ───────────────────────────────────────────────────
+  // Single endpoint for external hooks (freelancers) and internal cron hooks
+  if (req.method === 'POST' && req.url === '/hooks/agent') {
+    let body = '';
+    req.on('data', c => { body += c; });
+    req.on('end', async () => {
+      try {
+        let payload;
+        try { payload = JSON.parse(body); } catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid JSON' }));
+          return;
+        }
+
+        const { agent, task } = payload;
+
+        // Specialized agents (Freelancers)
+        if (agent === 'hobi') {
+          log('INFO', `Hook: Triggering Hobi (task=${task})`);
+          try {
+            
+            let hobiResult;
+            if (runHobi) {
+              hobiResult = await runHobi({ payload });
+            } else {
+              console.log('[Router] runHobi is not available.');
+            }
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(hobiResult));
+          } catch (err) {
+            log('ERROR', `Hobi failed: ${err.message}`);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: sanitizeError(err) }));
+          }
+          return;
+        }
+
+        // Standard Pipeline agents
+        if (agent) {
+          // Existing logic for manual triggers
+          // ...
+        }
+
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Unknown agent' }));
+
+      } catch (err) {
+        log('ERROR', `Hook failed: ${err.message}`);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: sanitizeError(err) }));
       }
     });
     return;
@@ -1769,7 +1964,7 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ ok: true, articleId, triggered, priority: data.priority || 'high' }));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
+        res.end(JSON.stringify({ error: sanitizeError(err) }));
       }
     });
     return;
@@ -1798,30 +1993,47 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ error: 'type must be generating or publishing' }));
         return;
       }
-      const configPath = join(PROJECTS_DIR, `${project}.json`);
       try {
-        const config = JSON.parse(readFileSync(configPath, 'utf-8'));
-        const key = `${type}_paused`;
-        config[key] = paused;
-        config[`${key}_by`] = by || 'dashboard';
-        config[`${key}_at`] = new Date().toISOString();
-        writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
-        log('INFO', `${type} ${paused ? 'PAUSED' : 'RESUMED'} for ${project} by ${by || 'dashboard'}`);
+        const wdb = getWriteDb();
+        const col = `${type}_paused`;
+        const pausedVal = paused ? 1 : 0;
+        const byVal = by || 'dashboard';
+        const atVal = new Date().toISOString();
 
-        // Write event to article_events for audit trail
+        // Single source of truth: SQLite
+        wdb.prepare(`UPDATE project_settings SET ${col} = ?, paused_by = ?, paused_at = ?, updated_at = datetime('now') WHERE project = ?`)
+          .run(pausedVal, byVal, atVal, project);
+
+        // Keep the legacy 'paused' column in sync (generating_paused drives it)
+        if (type === 'generating') {
+          wdb.prepare("UPDATE project_settings SET paused = ?, updated_at = datetime('now') WHERE project = ?").run(pausedVal, project);
+        }
+
+        // Also update JSON file for backward compat (agents read project config)
         try {
-          const wdb = getWriteDb();
+          const configPath = join(PROJECTS_DIR, `${project}.json`);
+          const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+          config[`${type}_paused`] = paused;
+          config[`${type}_paused_by`] = byVal;
+          config[`${type}_paused_at`] = atVal;
+          writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+        } catch { /* JSON sync is best-effort now, DB is authoritative */ }
+
+        log('INFO', `${type} ${paused ? 'PAUSED' : 'RESUMED'} for ${project} by ${byVal}`);
+
+        // Audit event
+        try {
           wdb.prepare(
             `INSERT INTO article_events (article_id, project, phase, event_type, agent, agent_type, detail, created_at)
              VALUES (0, ?, ?, 'config_change', 'dashboard', 'human', ?, datetime('now'))`,
-          ).run(project, type, `${type} ${paused ? 'paused' : 'resumed'} by ${by || 'dashboard'}`);
+          ).run(project, type, `${type} ${paused ? 'paused' : 'resumed'} by ${byVal}`);
         } catch { /* non-critical */ }
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, project, type, paused }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
+        res.end(JSON.stringify({ error: sanitizeError(err) }));
       }
     });
     return;
@@ -1847,7 +2059,7 @@ const server = http.createServer(async (req, res) => {
       } catch (err) {
         log('ERROR', `Webhook failed: ${err.message}`);
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: false, error: err.message }));
+        res.end(JSON.stringify({ ok: false, error: sanitizeError(err) }));
       }
     });
     return;
@@ -1866,28 +2078,6 @@ try { ensureSchema(); } catch (err) {
 
 // Restore state from previous run
 loadState();
-
-// Sync projects from JSON to DB
-function syncProjectsToDb() {
-  try {
-    const projects = loadProjects();
-    const wdb = getWriteDb();
-    const existing = wdb.prepare("SELECT project FROM project_settings").all().map(r => r.project);
-    for (const p of projects) {
-      if (!existing.includes(p.slug)) {
-        log('INFO', `Sync: Adding missing project '${p.slug}' to DB`);
-        wdb.prepare(`
-          INSERT INTO project_settings (project, daily_limit, vacation_mode, auto_approve, paused, updated_at)
-          VALUES (?, 2, 0, 0, 0, datetime('now'))
-        `).run(p.slug);
-      }
-    }
-    log('INFO', `Synced ${projects.length} projects to DB`);
-  } catch (err) {
-    log('ERROR', `Sync failed: ${err.message}`);
-  }
-}
-syncProjectsToDb();
 
 // Poll every 2 minutes — primary chain mechanism since /hooks/agent completions
 // go to the main session, not back to the router. Lightweight (few SQLite reads).

@@ -84,7 +84,7 @@ export function ApprovalActions({ articleId, status }: ApprovalActionsProps) {
     setLoading(false);
 
     if (!result.ok) {
-      alert(`❌ Error: ${result.error}`);
+      alert(`Something went wrong. Please try again or contact support.`);
       return;
     }
 

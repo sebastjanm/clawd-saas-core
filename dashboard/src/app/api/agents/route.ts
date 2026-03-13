@@ -13,8 +13,7 @@ export async function GET(request: Request) {
   try {
     await requireAuth(request);
     const db = getDb();
-    // In SaaS mode, we don't expose system cron jobs
-    // const cronJobs = await getCronJobs();
+    const cronJobs = await getCronJobs();
 
     const agents: AgentStatus[] = Object.entries(AGENT_META).map(
       ([name, meta]) => {
@@ -34,11 +33,14 @@ export async function GET(request: Request) {
           )
           .get(name) as { total: number; errors: number };
 
-        // Mock cron data for SaaS
-        const agentCronJobs: any[] = []; 
-        const mostRecentCron = null;
+        const agentCronJobs = findCronJobsForAgent(name, cronJobs);
+        const mostRecentCron = getMostRecentCronRun(agentCronJobs);
 
-        const totalConsecutiveErrors = 0;
+        // Aggregate errors across all cron jobs for this agent
+        const totalConsecutiveErrors = agentCronJobs.reduce(
+          (sum, j) => sum + (j.state?.consecutiveErrors ?? 0),
+          0,
+        );
 
         return {
           name,

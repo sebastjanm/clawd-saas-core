@@ -3,8 +3,6 @@
 import { useState, useTransition, useEffect, useCallback, useRef } from 'react';
 import { type ProjectSettings, updateProjectSettings } from '../../actions/settings';
 import { type ProjectPauseState, toggleProjectPause } from '../../actions/pause';
-import { deleteProject } from '../../actions/deleteProject';
-import { NewProjectModal } from './NewProjectModal';
 
 function Toggle({
   label,
@@ -108,10 +106,10 @@ function ProjectCard({
 }) {
   const [s, setS] = useState(initial);
   const [isPending, startTransition] = useTransition();
-  const [isDeleting, setIsDeleting] = useState(false);
   const [lastSaved, setLastSaved] = useState<number | null>(null);
 
   // Sync with initial props if they change (e.g. after revalidation)
+  // We use a ref to track the previous initial settings to avoid loops/stale reverts
   const prevInitialRef = useRef(JSON.stringify(initial));
   useEffect(() => {
     const currentJson = JSON.stringify(initial);
@@ -132,26 +130,16 @@ function ProjectCard({
     });
   };
 
-  const handleDelete = () => {
-    if (!confirm(`⚠️ DANGER: Delete "${s.project}"?\n\nThis will remove all data for this project.\nThis cannot be undone.`)) return;
-    setIsDeleting(true);
-    startTransition(async () => {
-       const res = await deleteProject(s.project);
-       if (res.ok) {
-         window.location.reload();
-       } else {
-         alert('Failed: ' + res.error);
-         setIsDeleting(false);
-       }
-    });
-  };
-
   const projectColors: Record<string, string> = {
-    // Colors auto-assigned per project
+    nakupsrebra: '#C0C0C0', // Silver
+    'baseman-blog': '#000000', // Black
+    'avant2go-subscribe': '#00AEEF', // Blue
   };
 
   const projectLabels: Record<string, string> = {
-    // Labels default to project slug
+    nakupsrebra: 'Nakup Srebra',
+    'baseman-blog': 'Baseman Blog',
+    'avant2go-subscribe': 'Avant2Go',
   };
 
   const isGeneratingPaused = !!pauseState?.generating;
@@ -235,6 +223,39 @@ function ProjectCard({
           </div>
         </div>
 
+        {/* Row 1.5: Translation */}
+        <div className="space-y-3">
+          <div className="text-[11px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider flex items-center gap-2">
+            <span>🌐 Translation</span>
+            <div className="h-px bg-[var(--border)] flex-1"/>
+          </div>
+          <div className="flex items-center gap-3 pl-1">
+            <Toggle
+              label="Auto-Translate"
+              hint="Prevo creates translated copies of each article"
+              checked={!!s.translate_to}
+              onChange={(v) => save({ translate_to: v ? 'en' : null })}
+            />
+            {s.translate_to && (
+              <select
+                value={s.translate_to || 'en'}
+                onChange={(e) => save({ translate_to: e.target.value })}
+                className="ml-auto text-sm rounded-md border border-[var(--border)] bg-[var(--bg-tertiary)] text-[var(--text)] px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+              >
+                <option value="en">English</option>
+                <option value="sl">Slovenščina</option>
+                <option value="de">Deutsch</option>
+                <option value="hr">Hrvatski</option>
+                <option value="sr">Srpski</option>
+                <option value="bs">Bosanski</option>
+                <option value="it">Italiano</option>
+                <option value="fr">Français</option>
+                <option value="es">Español</option>
+              </select>
+            )}
+          </div>
+        </div>
+
         {/* Row 2: Capacity Settings (Grouped) */}
         <div className={`rounded-lg border transition-all duration-300 ${
           s.vacation_mode
@@ -288,17 +309,6 @@ function ProjectCard({
              </p>
            </div>
         </div>
-
-        <div className="flex justify-end pt-2 border-t border-[var(--border)]/30">
-          <button 
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="text-[10px] text-[var(--error)]/60 hover:text-[var(--error)] hover:bg-[var(--error)]/10 px-2 py-1 rounded transition-colors disabled:opacity-30 flex items-center gap-1"
-            title="Delete this project permanently"
-          >
-            {isDeleting ? 'Deleting...' : '🗑️ Delete Project'}
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -306,7 +316,6 @@ function ProjectCard({
 
 export function ProjectSettingsPanel({ settings }: { settings: ProjectSettings[] }) {
   const [pauseStates, setPauseStates] = useState<Record<string, ProjectPauseState>>({});
-  const [showNew, setShowNew] = useState(false);
   const [, startTransition] = useTransition();
 
   const fetchPauseStates = useCallback(async () => {
@@ -347,35 +356,24 @@ export function ProjectSettingsPanel({ settings }: { settings: ProjectSettings[]
     });
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
-        <button 
-          onClick={() => setShowNew(true)}
-          className="rounded-lg bg-[var(--surface)] border border-[var(--border)] px-4 py-2 text-xs font-medium hover:bg-[var(--surface-hover)] transition-colors flex items-center gap-2"
-        >
-          <span>✨</span> New Project
-        </button>
+  if (!settings?.length) {
+    return (
+      <div className="p-8 text-center border border-[var(--border)] rounded-xl border-dashed">
+        <p className="text-sm text-[var(--text-secondary)]">No project settings found.</p>
       </div>
+    );
+  }
 
-      {!settings?.length ? (
-        <div className="p-8 text-center border border-[var(--border)] rounded-xl border-dashed">
-          <p className="text-sm text-[var(--text-secondary)]">No project settings found.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {settings.map((s) => (
-            <ProjectCard
-              key={s.project}
-              settings={s}
-              pauseState={pauseStates[s.project]}
-              onPauseToggle={handlePauseToggle}
-            />
-          ))}
-        </div>
-      )}
-
-      {showNew && <NewProjectModal onClose={() => setShowNew(false)} />}
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      {settings.map((s) => (
+        <ProjectCard
+          key={s.project}
+          settings={s}
+          pauseState={pauseStates[s.project]}
+          onPauseToggle={handlePauseToggle}
+        />
+      ))}
     </div>
   );
 }

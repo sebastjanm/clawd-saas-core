@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   useSocial,
   updateSocialPost,
@@ -8,7 +8,6 @@ import {
   type SocialGroup,
   type SocialPost,
 } from '../../hooks/useSocial';
-import { useProjects } from '@/shared/hooks/useProjects';
 import { Spinner } from '@/shared/components/client/Spinner';
 import { PROJECT_COLORS } from '@/lib/types';
 
@@ -30,6 +29,14 @@ const STATUS_TABS = [
   { value: 'approved', label: 'Approved' },
   { value: 'posted', label: 'Posted' },
   { value: 'rejected', label: 'Rejected' },
+];
+
+const PROJECTS = [
+  { id: '', label: 'All projects' },
+  { id: 'nakupsrebra', label: 'NakupSrebra' },
+  { id: 'baseman-blog', label: 'Baseman Blog' },
+  { id: 'avant2go-subscribe', label: 'Avant2Subscribe' },
+  { id: 'lightingdesign-studio', label: 'Lighting Design' },
 ];
 
 function StatusBadge({ status }: { status: string }) {
@@ -213,11 +220,16 @@ function ArticleGroup({
   );
 }
 
-export function SocialDashboard() {
+export function SocialDashboard({ initialProject }: { initialProject?: string }) {
   const [statusFilter, setStatusFilter] = useState('');
-  const [projectFilter, setProjectFilter] = useState('');
+  // If initialProject provided, lock to it.
+  const [projectFilter, setProjectFilter] = useState(initialProject || '');
   const [busy, setBusy] = useState(false);
-  const { projects } = useProjects();
+
+  // Sync state if prop changes
+  useEffect(() => {
+    if (initialProject) setProjectFilter(initialProject);
+  }, [initialProject]);
 
   const { data, loading, error, refetch } = useSocial(
     statusFilter || undefined,
@@ -254,6 +266,9 @@ export function SocialDashboard() {
     },
     {} as Record<string, number>,
   );
+
+  // Hide filter if scoped
+  const showProjectFilter = !initialProject;
 
   return (
     <div className="space-y-6">
@@ -296,18 +311,20 @@ export function SocialDashboard() {
           ))}
         </div>
 
-        {/* Project filter */}
-        <select
-          value={projectFilter}
-          onChange={(e) => setProjectFilter(e.target.value)}
-          className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)] outline-none"
-        >
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.label}
-            </option>
-          ))}
-        </select>
+        {/* Project filter (Conditional) */}
+        {showProjectFilter && (
+          <select
+            value={projectFilter}
+            onChange={(e) => setProjectFilter(e.target.value)}
+            className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)] outline-none"
+          >
+            {PROJECTS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Content */}

@@ -29,7 +29,7 @@ export function CardActions({ articleId, status, semaphore, priority }: CardActi
         setFeedback('✓');
         setTimeout(() => setFeedback(null), 1500);
       } else {
-        setFeedback(res.error ?? 'Failed');
+        setFeedback('Action could not be completed. Please try again.');
         setTimeout(() => setFeedback(null), 3000);
       }
       setShowMenu(false);

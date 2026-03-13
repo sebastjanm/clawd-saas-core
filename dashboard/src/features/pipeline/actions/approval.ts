@@ -14,7 +14,7 @@ function revalidateArticlePaths(articleId: number) {
 
 function runPipelineCli(command: string, articleId: number): ActionResult & { url?: string } {
   const output = execSync(
-    `node /home/clawdbot/clawd/content-pipeline/scripts/pipeline-cli.js ${command} ${articleId}`,
+    `node ${process.env.PIPELINE_CLI || '/home/clawdbot/clawd-saas-core/scripts/pipeline-cli.js'} ${command} ${articleId}`,
     { encoding: 'utf8', timeout: 90_000 },
   );
 

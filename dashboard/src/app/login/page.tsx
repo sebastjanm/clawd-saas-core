@@ -43,22 +43,11 @@ export default function LoginPage() {
         <div className="text-center">
           <span className="text-4xl">🚀</span>
           <h1 className="mt-4 text-2xl font-bold text-[var(--text-primary)]">
-            EasyAI Start
+            Content Factory
           </h1>
-          {process.env.NEXT_PUBLIC_COMPANY_NAME ? (
-            <>
-              <p className="mt-2 text-sm font-medium text-[var(--text-secondary)]">
-                Content Factory for {process.env.NEXT_PUBLIC_COMPANY_NAME}
-              </p>
-              <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-                Enter your access token to continue
-              </p>
-            </>
-          ) : (
-            <p className="mt-2 text-sm text-[var(--text-tertiary)]">
-              Enter your access token to continue
-            </p>
-          )}
+          <p className="mt-2 text-sm text-[var(--text-tertiary)]">
+            Enter your access token to continue
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

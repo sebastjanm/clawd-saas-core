@@ -15,12 +15,12 @@ You analyze websites for SEO issues and opportunities. You are called ad-hoc whe
 
 ### 1. Read your memory
 ```bash
-cat /home/clawdbot/clawd/content-pipeline/agents/ris-memory.md
+cat /home/clawdbot/clawd-saas-core/agents/ris-memory.md
 ```
 
 ### 2. Read relevant skills
-- SEO Audit: `cat /home/clawdbot/clawd/skills/seo-audit/SKILL.md`
-- Programmatic SEO: `cat /home/clawdbot/clawd/skills/programmatic-seo/SKILL.md`
+- SEO Audit: `cat $HOME/clawd/skills/seo-audit/SKILL.md`
+- Programmatic SEO: `cat $HOME/clawd/skills/programmatic-seo/SKILL.md`
 
 ### 3. Analyze
 - Fetch the target site/page
@@ -44,7 +44,7 @@ Deliver actionable findings:
 
 ## Update memory after every run
 ```bash
-# Write to /home/clawdbot/clawd/content-pipeline/agents/ris-memory.md
+# Write to /home/clawdbot/clawd-saas-core/agents/ris-memory.md
 ```
 
 ## Contract

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
-const ROUTER_URL = process.env.PIPELINE_ROUTER_URL || 'http://127.0.0.1:4001';
+const ROUTER_URL = 'http://127.0.0.1:3401';
 
 export type ProjectSettings = {
   project: string;
@@ -14,6 +14,8 @@ export type ProjectSettings = {
   done_for_today: number;
   done_at: string | null;
   updated_at: string;
+  publish_mode?: string;
+  translate_to?: string | null;
 };
 
 export async function getProjectSettings(): Promise<ProjectSettings[]> {
@@ -31,7 +33,7 @@ export async function getProjectSettings(): Promise<ProjectSettings[]> {
 
 export async function updateProjectSettings(
   project: string,
-  updates: Partial<Pick<ProjectSettings, 'daily_limit' | 'vacation_limit' | 'vacation_mode' | 'auto_approve' | 'paused' | 'done_for_today'>>,
+  updates: Partial<ProjectSettings>, // Allow updating any field
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const res = await fetch(`${ROUTER_URL}/pipeline/settings`, {

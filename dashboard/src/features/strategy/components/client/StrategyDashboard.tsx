@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useStrategy, actOnDecision, type StrategyDecision } from '../../hooks/useStrategy';
-import { useProjects } from '@/shared/hooks/useProjects';
 import { Spinner } from '@/shared/components/client/Spinner';
 import { PROJECT_COLORS } from '@/lib/types';
 
@@ -30,6 +29,14 @@ const STATUS_TABS = [
   { value: 'pending', label: 'Pending' },
   { value: 'applied', label: 'Applied' },
   { value: 'rejected', label: 'Rejected' },
+];
+
+const PROJECTS = [
+  { id: '', label: 'All projects' },
+  { id: 'nakupsrebra', label: 'NakupSrebra' },
+  { id: 'baseman-blog', label: 'Baseman Blog' },
+  { id: 'avant2go-subscribe', label: 'Avant2Subscribe' },
+  { id: 'lightingdesign-studio', label: 'Lighting Design' },
 ];
 
 function DecisionCard({
@@ -119,7 +126,6 @@ export function StrategyDashboard() {
   const [statusFilter, setStatusFilter] = useState('');
   const [projectFilter, setProjectFilter] = useState('');
   const [busy, setBusy] = useState(false);
-  const { projects } = useProjects();
 
   const { data, loading, error, refetch } = useStrategy(
     statusFilter || undefined,
@@ -179,7 +185,7 @@ export function StrategyDashboard() {
           onChange={e => setProjectFilter(e.target.value)}
           className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)] outline-none"
         >
-          {projects.map(p => (
+          {PROJECTS.map(p => (
             <option key={p.id} value={p.id}>{p.label}</option>
           ))}
         </select>

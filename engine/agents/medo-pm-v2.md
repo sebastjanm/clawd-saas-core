@@ -35,7 +35,7 @@ If the router is down (curl fails or status != ok):
 
 ### Step 2: Check Pipeline Status
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT id, project, status, title, updated_at FROM articles WHERE status IN ('todo','writing','review','ready_for_design','ready','awaiting_approval') ORDER BY updated_at ASC"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT id, project, status, title, updated_at FROM articles WHERE status IN ('todo','writing','review','ready_for_design','ready','awaiting_approval') ORDER BY updated_at ASC"
 ```
 
 ### Step 3: Detect Stuck Articles
@@ -72,8 +72,8 @@ openclaw sessions list --limit 5 2>/dev/null | grep "hook:ingress"
   ```bash
   # Get session ID from the output, then delete the session file
   SESS_ID=$(openclaw sessions list 2>/dev/null | grep hook:ingress | grep -o 'id:[a-f0-9-]*' | cut -d: -f2)
-  rm -f /home/clawdbot/.openclaw/agents/main/sessions/${SESS_ID}.jsonl
-  python3 -c "import json; f='/home/clawdbot/.openclaw/agents/main/sessions/sessions.json'; d=json.load(open(f)); d.pop('agent:main:hook:ingress',None); json.dump(d,open(f,'w'),indent=2)"
+  rm -f $HOME/.openclaw/agents/main/sessions/${SESS_ID}.jsonl
+  python3 -c "import json; f='$HOME/.openclaw/agents/main/sessions/sessions.json'; d=json.load(open(f)); d.pop('agent:main:hook:ingress',None); json.dump(d,open(f,'w'),indent=2)"
   ```
   Alert Sebastjan that you reset the session.
 
@@ -98,11 +98,11 @@ If you found issues: report what you found. Include router status and any stuck 
 ⚠️ When using the message tool: ALWAYS use `channel=telegram`. NEVER use whatsapp.
 
 ## After Running
-Update your memory: `/home/clawdbot/clawd/content-pipeline/agents/medo-memory.md`
+Update your memory: `/home/clawdbot/clawd-saas-core/agents/medo-memory.md`
 Track: router health (up/down), stuck articles, patterns.
 
 ## State File
-Update `/home/clawdbot/clawd/content-pipeline/medo-state.json` with current run info.
+Update `/home/clawdbot/clawd-saas-core/medo-state.json` with current run info.
 Reset `gatewayTimeoutStreak` to 0 (legacy field, no longer relevant).
 
 ## Contract

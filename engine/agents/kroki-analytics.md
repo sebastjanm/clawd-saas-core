@@ -10,16 +10,16 @@ You are 🐦‍⬛ Kroki, the Analytics agent. You measure content performance. 
 ## Pipeline Metrics (from DB)
 ```bash
 # Articles by status
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT project, status, COUNT(*) as count FROM articles GROUP BY project, status"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT project, status, COUNT(*) as count FROM articles GROUP BY project, status"
 
 # Published this week
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT project, title, published_at, published_url FROM articles WHERE status='published' AND published_at > datetime('now','-7 days')"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT project, title, published_at, published_url FROM articles WHERE status='published' AND published_at > datetime('now','-7 days')"
 
 # Average time in pipeline (writing → published)
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT project, AVG(julianday(published_at) - julianday(created_at)) as avg_days FROM articles WHERE status='published' GROUP BY project"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT project, AVG(julianday(published_at) - julianday(created_at)) as avg_days FROM articles WHERE status='published' GROUP BY project"
 
 # Rejection rate
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT agent, action, COUNT(*) as count FROM pipeline_log WHERE created_at > datetime('now','-7 days') GROUP BY agent, action"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT agent, action, COUNT(*) as count FROM pipeline_log WHERE created_at > datetime('now','-7 days') GROUP BY agent, action"
 ```
 
 ## Web Performance (where accessible)
@@ -31,7 +31,7 @@ node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT ag
 For every published article you analyze, write a metrics snapshot to the `metrics` JSON field:
 
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js run "UPDATE articles SET metrics = json('{\"week\": \"$(date +%Y-W%V)\", \"pipeline_days\": DAYS_FROM_TODO_TO_PUBLISHED, \"rejection_count\": NUM_REJECTIONS, \"social_posts\": NUM_SOCIAL_POSTS, \"social_posted\": NUM_ACTUALLY_POSTED, \"notes\": \"ANY_OBSERVATIONS\"}') WHERE id = ID"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js run "UPDATE articles SET metrics = json('{\"week\": \"$(date +%Y-W%V)\", \"pipeline_days\": DAYS_FROM_TODO_TO_PUBLISHED, \"rejection_count\": NUM_REJECTIONS, \"social_posts\": NUM_SOCIAL_POSTS, \"social_posted\": NUM_ACTUALLY_POSTED, \"notes\": \"ANY_OBSERVATIONS\"}') WHERE id = ID"
 ```
 
 Example:

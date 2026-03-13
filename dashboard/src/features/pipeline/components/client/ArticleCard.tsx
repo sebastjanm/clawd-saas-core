@@ -251,16 +251,14 @@ export function ArticleCard({ article }: ArticleCardProps) {
           {semaphore === 'failed' && article.lastAgentRun && (
             <>
               <p className="text-[var(--error)]">
-                {article.lastAgentRun.agent} failed
+                Processing issue
                 {article.lastAgentRun.finishedAt && ` · ${formatAge(article.lastAgentRun.finishedAt)} ago`}
               </p>
-              {article.lastAgentRun.error && (
-                <p className="text-[var(--text-faint)] font-mono text-[10px] break-all">{article.lastAgentRun.error}</p>
-              )}
+              <p className="text-[var(--text-secondary)] text-[10px]">This article needs attention. Try retrying or contact support if the issue persists.</p>
             </>
           )}
           {semaphore === 'failed' && article.agentDetail && !article.lastAgentRun && (
-            <p className="text-[var(--error)]">{article.agentDetail}</p>
+            <p className="text-[var(--error)]">This article needs attention. Try retrying or contact support.</p>
           )}
         </div>
       )}

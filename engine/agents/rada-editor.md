@@ -10,19 +10,19 @@ Before reviewing ANY article, load these references:
 
 ### 1. Humanizer Skill (MANDATORY)
 ```bash
-cat /home/clawdbot/clawd/skills/humanizer/SKILL.md
+cat $HOME/clawd/skills/humanizer/SKILL.md
 ```
 This contains 24+ AI writing patterns to detect and fix. You must internalize ALL of them.
 
 ### 2. Project Writing Rules
 ```bash
-cat /home/clawdbot/clawd/content-pipeline/projects/PROJECT_ID.json
+cat /home/clawdbot/clawd-saas-core/projects/PROJECT_ID.json
 ```
 Pay special attention to: `writing.tone`, `writing.forbidden`, `writing.sources`, `product_context`.
 
 ### 3. Project Review Checklist
 ```bash
-cat /home/clawdbot/clawd/content-pipeline/CHECKLIST_PATH
+cat /home/clawdbot/clawd-saas-core/CHECKLIST_PATH
 ```
 (Path is in project config → `review.checklist`, relative to content-pipeline dir)
 
@@ -33,7 +33,7 @@ cat /home/clawdbot/clawd/content-pipeline/CHECKLIST_PATH
 Before picking up ANY article, check if downstream is clear for this project:
 
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT COUNT(*) as blocked FROM articles WHERE project='PROJECT_FROM_ARTICLE' AND status IN ('ready_for_design','ready','awaiting_approval')"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT COUNT(*) as blocked FROM articles WHERE project='PROJECT_FROM_ARTICLE' AND status IN ('ready_for_design','ready','awaiting_approval')"
 ```
 
 **Replace `PROJECT_FROM_ARTICLE` with the project from the article you're about to review.**
@@ -48,7 +48,7 @@ node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT CO
 
 1. Find articles with status = `review`:
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT id,project,title,slug,draft_md FROM articles WHERE status='review' ORDER BY updated_at ASC LIMIT 1"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT id,project,title,slug,draft_md FROM articles WHERE status='review' ORDER BY updated_at ASC LIMIT 1"
 ```
 
 2. Load all references (humanizer + project config + checklist)
@@ -122,15 +122,15 @@ Go through the article paragraph by paragraph. For each:
 Run Pass 2 + 3. Save your cleaned/rewritten MARKDOWN version (Zala will convert to HTML):
 
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/pipeline-cli.js set-content ID final_md /tmp/rada-reviewed-ID.md
-node /home/clawdbot/clawd/content-pipeline/scripts/pipeline-cli.js update-status ID ready_for_design
+node /home/clawdbot/clawd-saas-core/scripts/pipeline-cli.js set-content ID final_md /tmp/rada-reviewed-ID.md
+node /home/clawdbot/clawd-saas-core/scripts/pipeline-cli.js update-status ID ready_for_design
 ```
 
 Write the cleaned markdown to `/tmp/rada-reviewed-ID.md` first, then use set-content to save it.
 
 **Log what you learned (even on pass):**
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js run "UPDATE articles SET learnings = json_insert(COALESCE(learnings, '[]'), '$[#]', json('{\"agent\": \"rada\", \"date\": \"$(date +%Y-%m-%d)\", \"type\": \"pass\", \"fixes\": [\"WHAT_YOU_FIXED\"], \"note\": \"WHAT_WORKED_WELL\"}')) WHERE id = ID"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js run "UPDATE articles SET learnings = json_insert(COALESCE(learnings, '[]'), '$[#]', json('{\"agent\": \"rada\", \"date\": \"$(date +%Y-%m-%d)\", \"type\": \"pass\", \"fixes\": [\"WHAT_YOU_FIXED\"], \"note\": \"WHAT_WORKED_WELL\"}')) WHERE id = ID"
 ```
 Example: `{"agent":"rada","date":"2026-02-22","type":"pass","fixes":["rewrote intro","shortened 4 sentences"],"note":"Comparison format works well for this audience"}`
 
@@ -140,12 +140,12 @@ Example: `{"agent":"rada","date":"2026-02-22","type":"pass","fixes":["rewrote in
 Reject with specific, actionable feedback. Set status to `todo` so Pino picks it up again automatically, and increment `revision_count`:
 
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js run "UPDATE articles SET feedback = 'STRUCTURED_FEEDBACK', status = 'todo', revision_count = COALESCE(revision_count, 0) + 1, updated_at = datetime('now'), claimed_by = NULL, claimed_at = NULL WHERE id = ID"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js run "UPDATE articles SET feedback = 'STRUCTURED_FEEDBACK', status = 'todo', revision_count = COALESCE(revision_count, 0) + 1, updated_at = datetime('now'), claimed_by = NULL, claimed_at = NULL WHERE id = ID"
 ```
 
 **Also log the rejection to `learnings` so the system remembers:**
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js run "UPDATE articles SET learnings = json_insert(COALESCE(learnings, '[]'), '$[#]', json('{\"agent\": \"rada\", \"date\": \"$(date +%Y-%m-%d)\", \"type\": \"reject\", \"issues\": [\"ISSUE1\", \"ISSUE2\"], \"lesson\": \"WHAT_WE_LEARNED\"}')) WHERE id = ID"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js run "UPDATE articles SET learnings = json_insert(COALESCE(learnings, '[]'), '$[#]', json('{\"agent\": \"rada\", \"date\": \"$(date +%Y-%m-%d)\", \"type\": \"reject\", \"issues\": [\"ISSUE1\", \"ISSUE2\"], \"lesson\": \"WHAT_WE_LEARNED\"}')) WHERE id = ID"
 ```
 Example: `{"agent":"rada","date":"2026-02-22","type":"reject","issues":["FK 48","text wall section 3"],"lesson":"Silver tax articles need shorter sentences, audience is not academic"}`
 
@@ -172,8 +172,8 @@ Rada no longer does HTML conversion. After Pass 3, save the clean edited markdow
 cat > /tmp/rada-reviewed-ID.md << 'MDEOF'
 YOUR CLEAN MARKDOWN HERE
 MDEOF
-node /home/clawdbot/clawd/content-pipeline/scripts/pipeline-cli.js set-content ID final_md /tmp/rada-reviewed-ID.md
-node /home/clawdbot/clawd/content-pipeline/scripts/pipeline-cli.js update-status ID ready_for_design
+node /home/clawdbot/clawd-saas-core/scripts/pipeline-cli.js set-content ID final_md /tmp/rada-reviewed-ID.md
+node /home/clawdbot/clawd-saas-core/scripts/pipeline-cli.js update-status ID ready_for_design
 ```
 
 Zala will pick it up and convert to production HTML with proper templates, styling, and visual components.

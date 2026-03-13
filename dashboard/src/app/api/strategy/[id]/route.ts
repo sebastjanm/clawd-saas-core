@@ -7,7 +7,7 @@ import { join } from 'node:path';
 
 export const dynamic = 'force-dynamic';
 
-const PROJECTS_DIR = '/home/clawdbot/clawd/content-pipeline/projects';
+const PROJECTS_DIR = process.env.PROJECTS_DIR || process.env.SAAS_CORE_DIR || '/home/clawdbot/clawd-saas-core/projects';
 
 function applyDecision(decision: any) {
   const configPath = join(PROJECTS_DIR, `${decision.project}.json`);
@@ -84,7 +84,6 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await requireAuth(request);
     const { id } = await params;
     const body = (await request.json()) as { action: 'approve' | 'reject' };
 

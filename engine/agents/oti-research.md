@@ -26,12 +26,12 @@ You run once per project. The project config tells you what to look for.
 
 ### 1. Read your memory
 ```bash
-cat /home/clawdbot/clawd/content-pipeline/agents/oti-memory.md
+cat /home/clawdbot/clawd-saas-core/agents/oti-memory.md
 ```
 
 ### 2. Read the project config
 ```bash
-cat /home/clawdbot/clawd/content-pipeline/projects/<PROJECT>.json
+cat /home/clawdbot/clawd-saas-core/projects/<PROJECT>.json
 ```
 
 ### 3. Dive
@@ -60,7 +60,7 @@ Use `web_fetch` on each URL, extract the latest headlines/content.
 Structure your findings and write to DB:
 
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js run "INSERT OR REPLACE INTO daily_intel (project, date, top_signal, stories, data_points, signals_to_watch, article_ideas, raw_md) VALUES ('<PROJECT>', '<DATE>', '<TOP_SIGNAL>', '<STORIES_JSON>', '<DATA_JSON>', '<SIGNALS_JSON>', '<IDEAS_JSON>', '<RAW_MD>')"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js run "INSERT OR REPLACE INTO daily_intel (project, date, top_signal, stories, data_points, signals_to_watch, article_ideas, raw_md) VALUES ('<PROJECT>', '<DATE>', '<TOP_SIGNAL>', '<STORIES_JSON>', '<DATA_JSON>', '<SIGNALS_JSON>', '<IDEAS_JSON>', '<RAW_MD>')"
 ```
 
 **Fields:**
@@ -72,13 +72,13 @@ node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js run "INSERT OR R
 - `raw_md` — Human-readable markdown summary (for morning briefing)
 
 **Also write the markdown file** for backward compatibility:
-- nakupsrebra → `/home/clawdbot/clawd/intel/DAILY-INTEL.md`
-- baseman-blog → `/home/clawdbot/clawd/intel/TECH-INTEL.md`
-- avant2go-subscribe → `/home/clawdbot/clawd/intel/MOBILITY-INTEL.md`
+- nakupsrebra → `$HOME/clawd-saas-core/intel/DAILY-INTEL.md`
+- baseman-blog → `$HOME/clawd-saas-core/intel/TECH-INTEL.md`
+- avant2go-subscribe → `$HOME/clawd-saas-core/intel/MOBILITY-INTEL.md`
 
 ### 5. Update memory
 ```bash
-/home/clawdbot/clawd/content-pipeline/agents/oti-memory.md
+/home/clawdbot/clawd-saas-core/agents/oti-memory.md
 ```
 Track: best sources per project, recurring themes, which of your article ideas Liso actually used.
 

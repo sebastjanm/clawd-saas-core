@@ -1,11 +1,15 @@
 'use client';
 
-import { useProjects } from '@/shared/hooks/useProjects';
 import { useState, useTransition, useEffect, useCallback } from 'react';
 import { toggleProjectPause, type ProjectPauseState } from '../../actions/pause';
 import { PROJECT_COLORS } from '@/lib/types';
 
-
+const PROJECTS = [
+  { id: 'nakupsrebra', label: 'NakupSrebra' },
+  { id: 'baseman-blog', label: 'Baseman Blog' },
+  { id: 'avant2go-subscribe', label: 'Avant2Subscribe' },
+  { id: 'lightingdesign-studio', label: 'Lighting Design' },
+];
 
 function timeAgo(iso: string | null): string {
   if (!iso) return '';
@@ -18,10 +22,9 @@ function timeAgo(iso: string | null): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-export function ProjectControls() {
-  const { projects: PROJECTS } = useProjects();
+export function ProjectControls({ project }: { project?: string }) {
   const [states, setStates] = useState<Record<string, ProjectPauseState>>({});
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(!project); // Default expanded if showing all
   const [pending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -37,8 +40,17 @@ export function ProjectControls() {
 
   useEffect(() => { fetchStates(); }, [fetchStates]);
 
-  // Check if anything is paused
-  const anyPaused = Object.values(states).some(s => s.generating || s.publishing);
+  // If project is set, only show that project. Otherwise show all.
+  const projectsToShow = project 
+    ? PROJECTS.filter(p => p.id === project)
+    : PROJECTS;
+
+  // Check if anything (relevant) is paused
+  const relevantStates = Object.entries(states)
+    .filter(([k]) => !project || k === project)
+    .map(([, v]) => v);
+    
+  const anyPaused = relevantStates.some(s => s.generating || s.publishing);
 
   function handleToggle(project: string, type: 'generating' | 'publishing', currentlyPaused: boolean) {
     startTransition(async () => {
@@ -48,10 +60,53 @@ export function ProjectControls() {
         await fetchStates();
         setTimeout(() => setFeedback(null), 2000);
       } else {
-        setFeedback(res.error ?? 'Failed');
+        setFeedback('Action could not be completed. Please try again.');
         setTimeout(() => setFeedback(null), 3000);
       }
     });
+  }
+
+  // Simplified view for single project
+  if (project) {
+    return (
+      <div className="glass rounded-xl p-4 animate-fade-up">
+        {feedback && (
+          <div className={`text-xs font-medium px-3 py-1.5 rounded-lg mb-3 ${
+            feedback.includes('Failed') ? 'bg-[var(--error)]/10 text-[var(--error)]' : 'bg-[var(--success)]/10 text-[var(--success)]'
+          }`}>
+            {feedback}
+          </div>
+        )}
+        
+        <div className="space-y-4">
+          {projectsToShow.map((p) => {
+            const state = states[p.id] || { generating: false, publishing: false };
+            return (
+              <div key={p.id} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <PauseSwitch
+                    label="Generation"
+                    sublabel="Liso, Pino, Rada, Zala"
+                    paused={!!state.generating}
+                    by={state.generating_by}
+                    at={state.generating_at}
+                    disabled={pending}
+                    onToggle={() => handleToggle(p.id, 'generating', !!state.generating)}
+                  />
+                  <PauseSwitch
+                    label="Publishing"
+                    sublabel="Lana"
+                    paused={!!state.publishing}
+                    by={state.publishing_by}
+                    at={state.publishing_at}
+                    disabled={pending}
+                    onToggle={() => handleToggle(p.id, 'publishing', !!state.publishing)}
+                  />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -85,7 +140,7 @@ export function ProjectControls() {
           )}
 
           <div className="grid gap-3">
-            {PROJECTS.map((p) => {
+            {projectsToShow.map((p) => {
               const state = states[p.id];
               if (!state) return null;
               return (

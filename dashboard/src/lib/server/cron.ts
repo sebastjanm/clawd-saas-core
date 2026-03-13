@@ -6,7 +6,7 @@ import { CronJobSchema } from '../schemas';
 import type { CronJob } from '../types';
 
 const CRON_JOBS_PATH = process.env.CRON_JOBS_PATH
-  ?? path.resolve('/home/clawdbot/.openclaw/cron/jobs.json');
+  ?? path.join(process.env.OPENCLAW_HOME ?? `${process.env.HOME}/.openclaw`, 'cron/jobs.json');
 
 export function getCronJobs(): CronJob[] {
   try {

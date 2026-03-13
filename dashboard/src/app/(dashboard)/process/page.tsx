@@ -1,4 +1,3 @@
-export const dynamic = 'force-dynamic';
 import { getDb } from '@/lib/server/db';
 import { FlowGraph } from '@/features/pipeline/components/client/FlowGraph';
 

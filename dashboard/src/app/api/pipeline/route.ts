@@ -61,7 +61,7 @@ export async function GET(request: Request) {
     const limitPublished = 10;
     
     let query = `
-      SELECT * FROM articles 
+      SELECT *, asset_type as type FROM articles 
       WHERE status NOT IN ('published', 'promoted')
     `;
     const params: any[] = [];
@@ -76,7 +76,7 @@ export async function GET(request: Request) {
     const activeArticles = db.prepare(query).all(...params) as Article[];
 
     // Fetch recent published/promoted separately
-    let pubQuery = `SELECT * FROM articles WHERE status IN ('published', 'promoted')`;
+    let pubQuery = `SELECT *, asset_type as type FROM articles WHERE status IN ('published', 'promoted')`;
     const pubParams: any[] = [];
 
     if (project) {
@@ -174,6 +174,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ columns });
   } catch (error) {
+    console.error("[Pipeline API] Error:", error);
     return errorResponse(error);
   }
 }

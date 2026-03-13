@@ -12,7 +12,6 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await requireAuth(request);
     const { id } = await params;
     const body = (await request.json()) as { status?: string; content?: string };
 

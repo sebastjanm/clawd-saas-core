@@ -3,7 +3,7 @@ import os from 'node:os';
 import { execSync } from 'node:child_process';
 import type { SystemHealth } from '../types';
 
-export function getSystemHealth(): SystemHealth {
+export async function getSystemHealth(): Promise<SystemHealth> {
   const cpus = os.cpus();
   const cpuPercent = cpus.reduce((acc, cpu) => {
     const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
@@ -27,6 +27,15 @@ export function getSystemHealth(): SystemHealth {
     // fallback: leave at 0
   }
 
+  let gatewayUptimeHours = 0;
+  try {
+    const res = await fetch('http://127.0.0.1:3401/pipeline/health', { next: { revalidate: 0 } });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.gateway_uptime) gatewayUptimeHours = Math.round((data.gateway_uptime / 3600) * 10) / 10;
+    }
+  } catch {}
+
   return {
     cpuPercent: Math.round(cpuPercent * 10) / 10,
     memUsedMb: Math.round((memTotal - memFree) / 1024 / 1024),
@@ -34,5 +43,6 @@ export function getSystemHealth(): SystemHealth {
     diskUsedGb,
     diskTotalGb,
     uptimeHours: Math.round((os.uptime() / 3600) * 10) / 10,
+    gatewayUptimeHours,
   };
 }

@@ -97,7 +97,7 @@ export function ArticleTimeline({ articleId }: { articleId: number }) {
                   <p className="text-[10px] text-[var(--text-faint)] mt-0.5">{evt.detail}</p>
                 )}
                 {evt.error_message && (
-                  <p className="text-[10px] text-[var(--error)] mt-0.5 font-mono break-all">{evt.error_message}</p>
+                  <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">A processing issue occurred. The system will retry automatically.</p>
                 )}
                 {evt.blocked_reason && (
                   <p className="text-[10px] text-[var(--warning)] mt-0.5">{evt.blocked_reason}</p>

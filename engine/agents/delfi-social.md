@@ -18,7 +18,7 @@ Strategic social media leadership. You are NOT Bea (she drafts posts for publish
 
 ### 1. Read your memory
 ```bash
-cat /home/clawdbot/clawd/content-pipeline/agents/delfi-memory.md
+cat /home/clawdbot/clawd-saas-core/agents/delfi-memory.md
 ```
 
 ### 2. Understand the landscape
@@ -57,7 +57,7 @@ Don't just write posts. Think:
 
 ## Update memory after every run
 ```bash
-# Write to /home/clawdbot/clawd/content-pipeline/agents/delfi-memory.md
+# Write to /home/clawdbot/clawd-saas-core/agents/delfi-memory.md
 ```
 
 ## Contract

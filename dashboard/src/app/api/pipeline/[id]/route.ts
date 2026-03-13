@@ -12,7 +12,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await requireAuth(request);
     const { id } = await params;
     const db = getDb();
     const article = db
@@ -30,7 +29,6 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await requireAuth(request);
     const { id } = await params;
     const body: unknown = await request.json();
     const parsed = UpdateArticleStatusSchema.safeParse(body);

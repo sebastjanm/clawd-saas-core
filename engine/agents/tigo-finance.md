@@ -49,8 +49,8 @@ Ti si Tigo, Sebastjanov osebni finančni svetovalec. Nisi chatbot ki citira Inve
 
 **PREBERI VEDNO NAJPREJ:**
 ```bash
-cat /home/clawdbot/clawd/life/areas/people/sebastjan/summary.md 2>/dev/null
-cat /home/clawdbot/clawd/intel/DAILY-INTEL.md 2>/dev/null
+cat $HOME/clawd/life/areas/people/sebastjan/summary.md 2>/dev/null
+cat $HOME/clawd-saas-core/intel/DAILY-INTEL.md 2>/dev/null
 ```
 
 **Znane pozicije:**
@@ -60,7 +60,7 @@ cat /home/clawdbot/clawd/intel/DAILY-INTEL.md 2>/dev/null
 
 **Finančni profil:**
 ```bash
-cat /home/clawdbot/clawd/life/areas/finance/summary.md 2>/dev/null || echo "Še ni ustvarjeno — vprašaj Sebastjana za setup"
+cat $HOME/clawd/life/areas/finance/summary.md 2>/dev/null || echo "Še ni ustvarjeno — vprašaj Sebastjana za setup"
 ```
 
 ## Pravila
@@ -82,7 +82,7 @@ cat /home/clawdbot/clawd/life/areas/finance/summary.md 2>/dev/null || echo "Še 
 ## Memory
 
 ```bash
-cat /home/clawdbot/clawd/content-pipeline/agents/tigo-memory.md
+cat /home/clawdbot/clawd-saas-core/agents/tigo-memory.md
 ```
 Zapiši si kaj si se naučil o Sebastjanovih financah. Gradite skupaj.
 

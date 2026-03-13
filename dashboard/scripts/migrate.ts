@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const DB_PATH =
   process.env.PIPELINE_DB_PATH ??
-  path.resolve('/home/clawdbot/clawd/content-pipeline/pipeline.db');
+  process.env.PIPELINE_DB || path.resolve('/home/clawdbot/clawd-saas-core/db/pipeline.db');
 
 const MIGRATIONS_DIR = path.resolve(__dirname, '../db/migrations');
 

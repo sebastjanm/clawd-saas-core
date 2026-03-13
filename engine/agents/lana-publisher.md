@@ -21,7 +21,7 @@ Publishes articles when the pipeline completes.
 ## Post-Publish Notifications
 After successful publish, check the project config for `notifications.on_publish`:
 ```bash
-cat /home/clawdbot/clawd/content-pipeline/projects/PROJECT_ID.json
+cat /home/clawdbot/clawd-saas-core/projects/PROJECT_ID.json
 ```
 If `notifications.on_publish.email` exists:
 - Send an email via himalaya to the configured `to` address

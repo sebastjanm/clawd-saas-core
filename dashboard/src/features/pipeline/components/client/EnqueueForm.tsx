@@ -1,38 +1,47 @@
 'use client';
 
-import { useProjects } from '@/shared/hooks/useProjects';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { enqueueArticle } from '../../actions/controls';
 
-
-
-const PRIORITIES = [
-  { id: 'normal' as const, label: 'Normal', icon: '' },
-  { id: 'high' as const, label: 'High', icon: '🔥' },
-  { id: 'now' as const, label: 'Now', icon: '⚡' },
+const PROJECTS = [
+  { id: 'nakupsrebra', label: 'NakupSrebra' },
+  { id: 'baseman-blog', label: 'Baseman Blog' },
+  { id: 'avant2go-subscribe', label: 'Avant2Subscribe' },
+  { id: 'lightingdesign-studio', label: 'Lighting Design' },
 ];
 
-export function EnqueueForm() {
-  const { projects: PROJECTS } = useProjects();
+const PRIORITIES = [
+  { id: 'normal', label: 'Normal', icon: '' },
+  { id: 'high', label: 'High', icon: '🔥' },
+  { id: 'now', label: 'Now', icon: '⚡' },
+];
+
+export function EnqueueForm({ defaultProject }: { defaultProject?: string }) {
   const [open, setOpen] = useState(false);
-  const [project, setProject] = useState(PROJECTS[0].id);
+  // Default to prop or first project
+  const [project, setProject] = useState(defaultProject || PROJECTS[0].id);
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<'normal' | 'high' | 'now'>('high');
   const [brief, setBrief] = useState('');
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
+  // Sync state if prop changes
+  useEffect(() => {
+    if (defaultProject) setProject(defaultProject);
+  }, [defaultProject]);
+
   function handleSubmit() {
     if (!title.trim()) return;
     startTransition(async () => {
       const res = await enqueueArticle(project, title.trim(), priority, brief.trim() || undefined);
-      if (res.ok) {
+      if (res) {
         setResult({ ok: true, msg: `Article #${res.articleId} created` });
         setTitle('');
         setBrief('');
         setTimeout(() => { setResult(null); setOpen(false); }, 2000);
       } else {
-        setResult({ ok: false, msg: res.error ?? 'Failed' });
+        setResult({ ok: false, msg: 'Could not add article. Please try again.' });
       }
     });
   }
@@ -74,19 +83,21 @@ export function EnqueueForm() {
           />
         </div>
 
-        {/* Project */}
-        <div>
-          <label className="block text-[10px] font-medium text-[var(--text-faint)] mb-1">Project</label>
-          <select
-            value={project}
-            onChange={(e) => setProject(e.target.value)}
-            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-          >
-            {PROJECTS.map((p) => (
-              <option key={p.id} value={p.id}>{p.label}</option>
-            ))}
-          </select>
-        </div>
+        {/* Project Selector (Disabled/Hidden if defaultProject set) */}
+        {!defaultProject && (
+          <div>
+            <label className="block text-[10px] font-medium text-[var(--text-faint)] mb-1">Project</label>
+            <select
+              value={project}
+              onChange={(e) => setProject(e.target.value)}
+              className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+            >
+              {PROJECTS.map((p) => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Priority */}
         <div>
@@ -95,7 +106,7 @@ export function EnqueueForm() {
             {PRIORITIES.map((p) => (
               <button
                 key={p.id}
-                onClick={() => setPriority(p.id)}
+                onClick={() => setPriority(p.id as any)}
                 className={`rounded-md px-2.5 py-2 text-[10px] font-semibold transition-all ${
                   priority === p.id
                     ? 'bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/25'

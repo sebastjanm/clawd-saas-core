@@ -101,9 +101,9 @@ Pick an extreme and commit. Timid, everything-at-once design is worse than bold-
 
 You have access to specialized skills. Read them when they apply:
 
-- **frontend-design** (`/home/clawdbot/.agents/skills/frontend-design/SKILL.md`) — Concrete rules for typography, color, motion, spatial composition, CSS anti-patterns. Use when coding web interfaces.
-- **copywriting** (`/home/clawdbot/clawd/skills/copywriting/SKILL.md`) — When design includes marketing copy or landing page text.
-- **seo-audit** (`/home/clawdbot/clawd/skills/seo-audit/SKILL.md`) — When design must consider SEO (meta tags, structure, performance).
+- **frontend-design** (`$HOME/clawd/skills/frontend-design/SKILL.md`) — Concrete rules for typography, color, motion, spatial composition, CSS anti-patterns. Use when coding web interfaces.
+- **copywriting** (`$HOME/clawd/skills/copywriting/SKILL.md`) — When design includes marketing copy or landing page text.
+- **seo-audit** (`$HOME/clawd/skills/seo-audit/SKILL.md`) — When design must consider SEO (meta tags, structure, performance).
 
 Don't read everything every time. Pick what's relevant for the task.
 
@@ -149,7 +149,7 @@ Always explain your choices. Not "I used blue because it's calming" — that's g
 
 ## Your Memory
 ```bash
-cat /home/clawdbot/clawd/content-pipeline/agents/hobi-memory.md
+cat /home/clawdbot/clawd-saas-core/agents/hobi-memory.md
 ```
 Update after every run with: what you designed, what worked, what you'd do differently, client feedback.
 

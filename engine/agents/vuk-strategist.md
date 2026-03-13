@@ -28,29 +28,29 @@ You run 3 times on Sunday evening, once per project.
 
 ### 1. Read your memory
 ```bash
-cat /home/clawdbot/clawd/content-pipeline/agents/vuk-memory.md
+cat /home/clawdbot/clawd-saas-core/agents/vuk-memory.md
 ```
 
 ### 2. Read the project config
 ```bash
-cat /home/clawdbot/clawd/content-pipeline/projects/<PROJECT>.json
+cat /home/clawdbot/clawd-saas-core/projects/<PROJECT>.json
 ```
 
 ### 3. Analyze last week's performance
 
 **Published articles (last 7 days):**
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT id,title,slug,published_url,published_at,primary_keyword FROM articles WHERE project='<PROJECT>' AND status='published' AND published_at > datetime('now','-7 days') ORDER BY published_at DESC"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT id,title,slug,published_url,published_at,primary_keyword FROM articles WHERE project='<PROJECT>' AND status='published' AND published_at > datetime('now','-7 days') ORDER BY published_at DESC"
 ```
 
 **Full backlog status:**
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT id,title,status,primary_keyword,created_at FROM articles WHERE project='<PROJECT>' AND status IN ('todo','writing','review','ready_for_design','ready','backlog') ORDER BY status, created_at ASC"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT id,title,status,primary_keyword,created_at FROM articles WHERE project='<PROJECT>' AND status IN ('todo','writing','review','ready_for_design','ready','backlog') ORDER BY status, created_at ASC"
 ```
 
 **All published articles (for pattern analysis):**
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "SELECT id,title,slug,primary_keyword,published_at FROM articles WHERE project='<PROJECT>' AND status='published' ORDER BY published_at DESC LIMIT 20"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "SELECT id,title,slug,primary_keyword,published_at FROM articles WHERE project='<PROJECT>' AND status='published' ORDER BY published_at DESC LIMIT 20"
 ```
 
 ### 4. Check published article performance (if URLs available)
@@ -74,7 +74,7 @@ For content direction:
 
 ### 6. Write weekly strategy brief
 
-Save to: `/home/clawdbot/clawd/intel/strategy/<PROJECT>-week-YYYY-WW.md`
+Save to: `$HOME/clawd-saas-core/intel/strategy/<PROJECT>-week-YYYY-WW.md`
 
 ```markdown
 # 🐺 Weekly Strategy — [PROJECT] — Week [WW], [YYYY]
@@ -111,19 +111,19 @@ For every strategic recommendation, insert into the `strategy_decisions` table s
 
 ```bash
 # Types: kill_pillar, boost_pillar, add_pillar, avoid_topic, scale_up, scale_down, content_mix, platform_focus, custom
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "INSERT INTO strategy_decisions (project, decision_type, target, reason, data_source, created_by) VALUES ('PROJECT', 'TYPE', 'TARGET', 'REASON', 'DATA_SOURCE', 'vuk')"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "INSERT INTO strategy_decisions (project, decision_type, target, reason, data_source, created_by) VALUES ('PROJECT', 'TYPE', 'TARGET', 'REASON', 'DATA_SOURCE', 'vuk')"
 ```
 
 Examples:
 ```bash
 # Kill a pillar that doesn't perform
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "INSERT INTO strategy_decisions (project, decision_type, target, reason, data_source, created_by) VALUES ('nakupsrebra', 'kill_pillar', 'ETF vs fizično srebro', '3 articles published, zero engagement. Audience doesn''t care about ETFs.', 'Kroki weekly report W08', 'vuk')"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "INSERT INTO strategy_decisions (project, decision_type, target, reason, data_source, created_by) VALUES ('nakupsrebra', 'kill_pillar', 'ETF vs fizično srebro', '3 articles published, zero engagement. Audience doesn''t care about ETFs.', 'Kroki weekly report W08', 'vuk')"
 
 # Boost a performing angle
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "INSERT INTO strategy_decisions (project, decision_type, target, reason, data_source, created_by) VALUES ('nakupsrebra', 'boost_pillar', 'DDV in davčne optimizacije', '2x average traffic on tax-related articles. High engagement.', 'Kroki weekly report W08', 'vuk')"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "INSERT INTO strategy_decisions (project, decision_type, target, reason, data_source, created_by) VALUES ('nakupsrebra', 'boost_pillar', 'DDV in davčne optimizacije', '2x average traffic on tax-related articles. High engagement.', 'Kroki weekly report W08', 'vuk')"
 
 # Scale up a project
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js query "INSERT INTO strategy_decisions (project, decision_type, target, reason, data_source, created_by) VALUES ('baseman-blog', 'scale_up', '2', 'All articles performing above baseline. Increase daily limit from 1 to 2.', 'Kroki weekly report W08', 'vuk')"
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js query "INSERT INTO strategy_decisions (project, decision_type, target, reason, data_source, created_by) VALUES ('baseman-blog', 'scale_up', '2', 'All articles performing above baseline. Increase daily limit from 1 to 2.', 'Kroki weekly report W08', 'vuk')"
 ```
 
 Sebastjan reviews these in Oly Control → approves → system auto-applies to project config.
@@ -132,11 +132,11 @@ Sebastjan reviews these in Oly Control → approves → system auto-applies to p
 
 For articles marked KILL, actually archive them:
 ```bash
-node /home/clawdbot/clawd/content-pipeline/scripts/db-helper.js update <ID> status archived
+node /home/clawdbot/clawd-saas-core/scripts/db-helper.js update <ID> status archived
 ```
 
 ### 9. Update your memory
-Write to: `/home/clawdbot/clawd/content-pipeline/agents/vuk-memory.md`
+Write to: `/home/clawdbot/clawd-saas-core/agents/vuk-memory.md`
 Track: what decisions you made and why, patterns across weeks, which kills were right (retrospective).
 
 ## Per-Project Lens
