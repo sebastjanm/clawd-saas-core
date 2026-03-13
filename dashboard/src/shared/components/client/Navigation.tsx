@@ -50,6 +50,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/flow', icon: '🎢', label: 'Flow' },
       { href: '/usage', icon: '💰', label: 'Usage' },
       { href: '/system', icon: '🖥️', label: 'System' },
+      { href: '/settings', icon: '⚙️', label: 'Settings' },
     ],
   },
 ];
